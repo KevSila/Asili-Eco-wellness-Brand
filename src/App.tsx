@@ -3,8 +3,8 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef } from "react";
-import { motion, useScroll } from "motion/react";
+import React, { useRef, useState } from "react";
+import { motion, useScroll, AnimatePresence } from "motion/react";
 import { 
   Leaf, 
   Droplets, 
@@ -19,9 +19,165 @@ import {
   Mail,
   Instagram,
   Facebook,
-  Twitter
+  Twitter,
+  Package,
+  Shirt,
+  Home,
+  Heart,
+  Rocket,
+  Search
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+
+const CATALOGUE_DATA = [
+  {
+    id: "wellness",
+    title: "Agro-Processing",
+    icon: <Leaf className="w-5 h-5" />,
+    description: "Transforming indigenous resources into world-class health products.",
+    items: [
+      { name: "Raw Forest Honey", desc: "Unfiltered, nutrient-rich honey from our living laboratory.", price: "Premium" },
+      { name: "Moringa Superfood", desc: "Cold-pressed oils and nutrient-dense leaf powders.", price: "Essential" },
+      { name: "Baobab Essence", desc: "Vitamin C rich fruit pulp and revitalizing seed oils.", price: "Luxury" },
+      { name: "Indigenous Oils", desc: "Artisanal essential oils from local flora.", price: "Artisanal" }
+    ]
+  },
+  {
+    id: "packaging",
+    title: "Eco-Packaging",
+    icon: <Package className="w-5 h-5" />,
+    description: "Eliminating plastic through nature-inspired containment solutions.",
+    items: [
+      { name: "Beeswax Wraps", desc: "Reusable, antibacterial food storage made from local wax.", price: "Eco-Friendly" },
+      { name: "Mycelium Boxes", desc: "Mushroom-based biodegradable shipping containers.", price: "Innovation" },
+      { name: "Bamboo Containers", desc: "Durable, compostable jars for wellness products.", price: "Sustainable" }
+    ]
+  },
+  {
+    id: "fashion",
+    title: "Afro-Eco Fashion",
+    icon: <Shirt className="w-5 h-5" />,
+    description: "Wearable sustainability rooted in African textile heritage.",
+    items: [
+      { name: "Organic Cotton Tees", desc: "Sustainably sourced cotton with natural plant dyes.", price: "Heritage" },
+      { name: "Recycled Accessories", desc: "Jewelry crafted from upcycled farm materials.", price: "Unique" },
+      { name: "Bark Cloth Accents", desc: "Traditional Ugandan bark cloth in modern silhouettes.", price: "Artisanal" }
+    ]
+  },
+  {
+    id: "home",
+    title: "Sustainable Home",
+    icon: <Home className="w-5 h-5" />,
+    description: "Bringing the essence of nature into your living space.",
+    items: [
+      { name: "Natural Cleaners", desc: "Plant-based, non-toxic household solutions.", price: "Pure" },
+      { name: "Bamboo Utensils", desc: "Hand-carved kitchenware from sustainable groves.", price: "Crafted" },
+      { name: "Beeswax Candles", desc: "Pure, clean-burning candles with natural scents.", price: "Atmospheric" }
+    ]
+  },
+  {
+    id: "kits",
+    title: "Wellness Kits",
+    icon: <Heart className="w-5 h-5" />,
+    description: "Curated experiences for holistic health and gifting.",
+    items: [
+      { name: "The Ritual Box", desc: "A complete morning wellness set with honey and moringa.", price: "Curated" },
+      { name: "Traveler's Kit", desc: "Compact essentials for sustainable living on the go.", price: "Essential" },
+      { name: "Eco-Gift Set", desc: "The perfect introduction to the Asili lifestyle.", price: "Giftable" }
+    ]
+  },
+  {
+    id: "tech",
+    title: "Future Tech",
+    icon: <Rocket className="w-5 h-5" />,
+    description: "Scaling impact through innovation and smart systems.",
+    items: [
+      { name: "Smart Beehives", desc: "IoT-enabled hives for optimal colony health monitoring.", price: "R&D" },
+      { name: "Circular Waste Hub", desc: "Modular systems for farm-to-fuel conversion.", price: "Infrastructure" },
+      { name: "Digital Traceability", desc: "Blockchain-backed sourcing for every product.", price: "Transparency" }
+    ]
+  }
+];
+
+const CatalogueTabs = () => {
+  const [activeTab, setActiveTab] = useState(CATALOGUE_DATA[0].id);
+
+  return (
+    <div className="space-y-12">
+      {/* Tab Navigation */}
+      <div className="flex flex-wrap justify-center gap-4">
+        {CATALOGUE_DATA.map((category) => (
+          <button
+            key={category.id}
+            onClick={() => setActiveTab(category.id)}
+            className={cn(
+              "flex items-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all duration-300",
+              activeTab === category.id
+                ? "bg-asili-green text-white shadow-lg scale-105"
+                : "bg-asili-cream text-asili-green/60 hover:bg-asili-honey/10 hover:text-asili-green"
+            )}
+          >
+            {category.icon}
+            {category.title}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      <div className="relative min-h-[400px]">
+        <AnimatePresence mode="wait">
+          {CATALOGUE_DATA.map((category) => (
+            activeTab === category.id && (
+              <motion.div
+                key={category.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                transition={{ duration: 0.4 }}
+                className="grid md:grid-cols-2 gap-8 items-start"
+              >
+                <div className="space-y-6">
+                  <div className="p-8 rounded-3xl bg-asili-cream border border-asili-honey/20">
+                    <h3 className="text-3xl font-bold mb-4 text-asili-green">{category.title}</h3>
+                    <p className="text-lg text-asili-green/70 leading-relaxed">{category.description}</p>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="p-6 rounded-2xl bg-asili-leaf/10 border border-asili-leaf/20">
+                      <span className="text-xs font-mono uppercase tracking-wider text-asili-leaf block mb-1">Impact</span>
+                      <span className="font-bold text-asili-green">100% Sustainable</span>
+                    </div>
+                    <div className="p-6 rounded-2xl bg-asili-honey/10 border border-asili-honey/20">
+                      <span className="text-xs font-mono uppercase tracking-wider text-asili-honey block mb-1">Source</span>
+                      <span className="font-bold text-asili-green">Local Heritage</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid gap-4">
+                  {category.items.map((item, idx) => (
+                    <motion.div
+                      key={item.name}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                      className="group p-6 rounded-2xl bg-white border border-asili-honey/10 hover:border-asili-honey hover:shadow-xl transition-all duration-300"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <h4 className="font-bold text-xl text-asili-green group-hover:text-asili-honey transition-colors">{item.name}</h4>
+                        <span className="text-xs font-mono px-2 py-1 rounded bg-asili-cream text-asili-honey uppercase tracking-tighter">{item.price}</span>
+                      </div>
+                      <p className="text-asili-green/60 text-sm leading-relaxed">{item.desc}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </motion.div>
+            )
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
 
 const Section = ({ children, className, id }: { children: React.ReactNode, className?: string, id?: string }) => (
   <section id={id} className={cn("py-20 px-6 md:px-12 lg:px-24", className)}>
@@ -66,6 +222,7 @@ export default function App() {
         <div className="hidden md:flex items-center gap-8 text-sm font-medium">
           <a href="#about" className="hover:text-asili-honey transition-colors">About</a>
           <a href="#foundation" className="hover:text-asili-honey transition-colors">Foundation</a>
+          <a href="#catalogue" className="hover:text-asili-honey transition-colors">Catalogue</a>
           <a href="#honey" className="hover:text-asili-honey transition-colors">Honey Venture</a>
           <a href="#impact" className="hover:text-asili-honey transition-colors">Impact</a>
           <a href="#financials" className="hover:text-asili-honey transition-colors">Roadmap</a>
@@ -218,6 +375,21 @@ export default function App() {
               </FadeIn>
             ))}
           </div>
+        </div>
+      </Section>
+
+      {/* Catalogue Section */}
+      <Section id="catalogue" className="bg-white">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-16">
+            <FadeIn>
+              <span className="text-asili-honey font-mono text-sm tracking-widest uppercase mb-4 block">Our Visionary Portfolio</span>
+              <h2 className="text-4xl md:text-5xl font-bold mb-4">The Asili Catalogue</h2>
+              <p className="text-asili-green/60 max-w-2xl mx-auto">A tiered ecosystem moving from immediate natural products to high-tech sustainable innovations.</p>
+            </FadeIn>
+          </div>
+
+          <CatalogueTabs />
         </div>
       </Section>
 
@@ -433,6 +605,7 @@ export default function App() {
             <ul className="space-y-4 text-asili-cream/60">
               <li><a href="#about" className="hover:text-white transition-colors">About Us</a></li>
               <li><a href="#foundation" className="hover:text-white transition-colors">Our Foundation</a></li>
+              <li><a href="#catalogue" className="hover:text-white transition-colors">Catalogue</a></li>
               <li><a href="#honey" className="hover:text-white transition-colors">Honey Venture</a></li>
               <li><a href="#impact" className="hover:text-white transition-colors">Impact Metrics</a></li>
             </ul>
