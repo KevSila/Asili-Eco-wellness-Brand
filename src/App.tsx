@@ -345,8 +345,9 @@ export default function App() {
 
   const handleContactSubmit = async (e: React.FormEvent<HTMLFormElement>, type: string) => {
     e.preventDefault();
+    const form = e.currentTarget;
     setFormStatus("submitting");
-    const formData = new FormData(e.currentTarget);
+    const formData = new FormData(form);
     const data = Object.fromEntries(formData.entries());
     
     try {
@@ -358,7 +359,7 @@ export default function App() {
       
       if (response.ok) {
         setFormStatus("success");
-        e.currentTarget.reset();
+        form.reset();
         setTimeout(() => setFormStatus("idle"), 5000);
       } else {
         setFormStatus("error");
@@ -698,6 +699,10 @@ export default function App() {
                         <input name="company" type="text" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all" />
                       </div>
                       <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Phone Number</label>
+                        <input name="phone" type="tel" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all" placeholder="+254..." />
+                      </div>
+                      <div className="space-y-2">
                         <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Your Interest</label>
                         <select name="interest" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all appearance-none cursor-pointer">
                           <option>Equity Investment</option>
@@ -705,6 +710,10 @@ export default function App() {
                           <option>R&D Collaboration</option>
                           <option>Bulk Supply</option>
                         </select>
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Message / Requirements</label>
+                        <textarea name="message" rows={4} className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all resize-none" placeholder="Tell us more about your inquiry..."></textarea>
                       </div>
                       <button 
                         disabled={formStatus === "submitting"}
@@ -986,6 +995,7 @@ export default function App() {
                       <input name="name" required type="text" placeholder="Name" className="bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
                       <input name="email" required type="email" placeholder="Email" className="bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
                     </div>
+                    <input name="phone" type="tel" placeholder="Phone Number" className="w-full bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
                     <input name="company" type="text" placeholder="Company / Institution" className="w-full bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
                     <select name="interest" className="w-full bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all text-asili-cream/50">
                       <option>Bulk Honey</option>
