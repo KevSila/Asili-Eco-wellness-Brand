@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
@@ -6,21 +6,54 @@
   --font-serif: "Playfair Display", serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
 
-  --color-asili-green: #2D4F1E;
-  --color-asili-honey: #D4A017;
-  --color-asili-cream: #FDFBF7;
+  /* Nature Theme (Original) */
+  --color-asili-green: #1a3a1e;
+  --color-asili-honey: #c5a059;
+  --color-asili-cream: #f9f7f2;
   --color-asili-earth: #8B4513;
-  --color-asili-leaf: #4F7942;
+  --color-asili-leaf: #2d5a27;
+
+  /* Luxury Theme (Honey) */
+  --color-asili-black: #0a0a0a;
+  --color-asili-gold: #d4af37;
+  --color-asili-gold-light: #f4d03f;
+  --color-asili-dark: #141414;
 }
 
-body {
-  @apply bg-asili-cream text-asili-green font-sans antialiased;
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply font-sans antialiased overflow-x-hidden;
+  }
+  h1, h2, h3, h4 {
+    @apply font-serif;
+  }
 }
 
-h1, h2, h3, h4 {
-  @apply font-serif;
+@layer components {
+  .glass {
+    @apply bg-asili-cream/70 backdrop-blur-md border-b border-asili-honey/10;
+  }
+  .glass-dark {
+    @apply bg-asili-black/70 backdrop-blur-md border-b border-asili-gold/10;
+  }
+  .gold-gradient {
+    @apply bg-gradient-to-r from-asili-gold via-asili-gold-light to-asili-gold bg-clip-text text-transparent;
+  }
 }
 
-.glass {
-  @apply bg-white/70 backdrop-blur-md border border-white/20;
+/* Custom spacing for titles to prevent overlap */
+.title-spacing {
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.hero-text-shadow {
+  text-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.hero-text-shadow-gold {
+  text-shadow: 0 4px 20px rgba(212,175,55,0.15);
 }
