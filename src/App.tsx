@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, AnimatePresence } from "motion/react";
 import { 
   Leaf, 
@@ -25,7 +25,9 @@ import {
   Home,
   Heart,
   Rocket,
-  Search
+  Search,
+  Menu,
+  X
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 
@@ -325,7 +327,21 @@ const FadeIn = ({ children, delay = 0 }: FadeInProps) => (
 export default function App() {
   const [view, setView] = useState<"brand" | "luxury">("brand");
   const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    setIsMenuOpen(false);
+  }, [view]);
+
+  // Disable scroll when mobile menu is open
+  useEffect(() => {
+    if (isMenuOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+  }, [isMenuOpen]);
 
   const handleContactSubmit = async (e: React.FormEvent<HTMLFormElement>, type: string) => {
     e.preventDefault();
@@ -365,7 +381,10 @@ export default function App() {
       )}>
         <div className="flex items-center gap-3">
           <button 
-            onClick={() => setView("brand")}
+            onClick={() => {
+              setView("brand");
+              setIsMenuOpen(false);
+            }}
             className="flex items-center gap-2 group"
           >
             <div className={cn(
@@ -404,7 +423,7 @@ export default function App() {
           <button
             onClick={() => setView(view === "brand" ? "luxury" : "brand")}
             className={cn(
-              "px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl",
+              "hidden sm:block px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl",
               view === "luxury" 
                 ? "bg-asili-green text-white hover:bg-asili-leaf" 
                 : "bg-asili-gold text-asili-black hover:bg-asili-gold-light"
@@ -412,41 +431,108 @@ export default function App() {
           >
             {view === "brand" ? "Enter Honey Showroom" : "Back to Main Brand"}
           </button>
+          
+          <button 
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            className={cn(
+              "lg:hidden w-10 h-10 flex items-center justify-center rounded-full transition-colors",
+              view === "luxury" ? "text-asili-gold hover:bg-asili-gold/10" : "text-asili-green hover:bg-asili-green/10"
+            )}
+          >
+            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+          </button>
         </div>
       </nav>
+
+      {/* Mobile Menu Overlay */}
+      <AnimatePresence>
+        {isMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: "100%" }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            className={cn(
+              "fixed inset-0 z-[45] lg:hidden flex flex-col pt-32 px-10 gap-8",
+              view === "luxury" ? "bg-asili-black text-asili-cream" : "bg-asili-cream text-asili-green"
+            )}
+          >
+            <div className="flex flex-col gap-6 text-2xl font-bold font-serif">
+              {view === "brand" ? (
+                <>
+                  <a href="#about" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Vision</a>
+                  <a href="#foundation" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Foundation</a>
+                  <a href="#catalogue" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Portfolio</a>
+                  <a href="#impact" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Impact</a>
+                  <a href="#roadmap" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Roadmap</a>
+                </>
+              ) : (
+                <>
+                  <a href="#maturity" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Maturity</a>
+                  <a href="#honey-catalogue" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Gold Label</a>
+                  <a href="#traceability" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Traceability</a>
+                  <a href="#b2b" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Partnerships</a>
+                </>
+              )}
+            </div>
+            
+            <div className="mt-8 pt-8 border-t border-current opacity-10"></div>
+            
+            <button
+              onClick={() => {
+                setView(view === "brand" ? "luxury" : "brand");
+                setIsMenuOpen(false);
+              }}
+              className={cn(
+                "w-full py-5 rounded-2xl text-center font-black uppercase tracking-widest text-sm shadow-xl",
+                view === "luxury" 
+                  ? "bg-asili-green text-white" 
+                  : "bg-asili-gold text-asili-black"
+              )}
+            >
+              {view === "brand" ? "Enter Honey Showroom" : "Back to Main Brand"}
+            </button>
+            
+            <div className="mt-auto pb-10 flex flex-col gap-2">
+              <p className="text-[10px] uppercase tracking-widest opacity-40 font-bold">Inquiries</p>
+              <a href="mailto:kevinsila100@gmail.com" className="text-sm font-bold">kevinsila100@gmail.com</a>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {view === "brand" ? (
         /* BRAND (NATURE) VIEW */
         <main className="pt-20">
           {/* Brand Hero */}
-          <Section className="relative min-h-screen flex items-center pt-0 overflow-hidden bg-asili-cream">
+          <Section className="relative min-h-[90vh] lg:min-h-screen flex items-center pt-24 lg:pt-0 overflow-hidden bg-asili-cream">
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,#e1e8dc_0%,transparent_70%)] opacity-40"></div>
               <img 
                 src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2013&auto=format&fit=crop" 
                 alt="African Eco-Wellness" 
-                className="absolute right-[-10%] top-[10%] w-2/3 h-4/5 object-cover rounded-[10rem] opacity-30 mix-blend-multiply"
+                className="absolute right-[-20%] lg:right-[-10%] top-[40%] lg:top-[10%] w-full lg:w-2/3 h-1/2 lg:h-4/5 object-cover rounded-[5rem] lg:rounded-[10rem] opacity-20 lg:opacity-30 mix-blend-multiply"
                 referrerPolicy="no-referrer"
               />
             </div>
             <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
               <FadeIn>
-                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-asili-honey/30 bg-asili-honey/5 mb-8">
+                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-asili-honey/30 bg-asili-honey/5 mb-6 lg:mb-8">
                   <span className="w-2 h-2 rounded-full bg-asili-honey animate-pulse"></span>
                   <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-asili-green mt-0.5">Healing People & The Planet</span>
                 </div>
-                <h1 className="text-6xl md:text-8xl font-bold mb-8 leading-[1] text-asili-green title-spacing hero-text-shadow">
+                <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 lg:mb-8 leading-[1.1] md:leading-[1] text-asili-green title-spacing hero-text-shadow">
                   The Origin of <br />
                   <span className="italic font-serif text-asili-honey">Wellness.</span>
                 </h1>
-                <p className="text-xl md:text-2xl text-asili-green/70 mb-10 leading-relaxed font-light max-w-xl">
+                <p className="text-lg md:text-xl lg:text-2xl text-asili-green/70 mb-8 lg:mb-10 leading-relaxed font-light max-w-xl">
                   Transforming Africa's indigenous resources into world-class wellness products—rooted in heritage, scaled by technology.
                 </p>
-                <div className="flex flex-wrap gap-5">
-                  <button onClick={() => setView("luxury")} className="group bg-asili-green text-white px-10 py-5 rounded-full font-bold flex items-center gap-3 hover:bg-asili-leaf transition-all shadow-[0_20px_40px_rgba(45,79,30,0.2)]">
+                <div className="flex flex-col sm:flex-row gap-4 lg:gap-5">
+                  <button onClick={() => setView("luxury")} className="group bg-asili-green text-white px-8 lg:px-10 py-4 lg:py-5 rounded-full font-bold flex items-center justify-center gap-3 hover:bg-asili-leaf transition-all shadow-[0_20px_40px_rgba(45,79,30,0.2)]">
                     Explore Honey Showroom <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </button>
-                  <a href="#catalogue" className="bg-white border border-asili-honey/20 text-asili-green px-10 py-5 rounded-full font-bold hover:bg-asili-cream transition-all">
+                  <a href="#catalogue" className="bg-white border border-asili-honey/20 text-asili-green px-8 lg:px-10 py-4 lg:py-5 rounded-full font-bold hover:bg-asili-cream transition-all text-center">
                     View Portfolio
                   </a>
                 </div>
@@ -511,9 +597,9 @@ export default function App() {
               <div className="relative group">
                 <div className="absolute -inset-4 bg-asili-honey/10 rounded-[4rem] rotate-3 scale-95 group-hover:rotate-0 transition-transform duration-700"></div>
                 <img 
-                  src="https://images.unsplash.com/photo-1464226184884-fa280b87c399?q=80&w=2070&auto=format&fit=crop" 
-                  alt="Asili Farm Laboratory" 
-                  className="relative z-10 w-full rounded-[3.5rem] shadow-2xl h-[600px] object-cover" 
+                  src="https://images.unsplash.com/photo-1557800636-894a64c1696f?q=80&w=2070&auto=format&fit=crop" 
+                  alt="Asili Orange & Mango Orchard" 
+                  className="relative z-10 w-full rounded-[3.5rem] shadow-2xl h-[400px] lg:h-[600px] object-cover" 
                   referrerPolicy="no-referrer" 
                 />
               </div>
@@ -537,13 +623,13 @@ export default function App() {
           {/* Impact Metrics */}
           <Section id="impact" className="bg-[#fbfcfa]">
             <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-20">
+              <div className="text-center mb-12 lg:mb-20">
                 <FadeIn>
                   <span className="text-asili-green font-bold uppercase tracking-widest text-xs mb-4 block">The Asili Effect</span>
-                  <h2 className="text-5xl font-bold mb-6 text-asili-green">Empowering People, <br /><span className="text-asili-honey italic">Restoring the Planet.</span></h2>
+                  <h2 className="text-4xl lg:text-5xl font-bold mb-6 text-asili-green leading-tight">Empowering People, <br className="hidden md:block" /><span className="text-asili-honey italic">Restoring the Planet.</span></h2>
                 </FadeIn>
               </div>
-              <div className="grid md:grid-cols-3 gap-8 md:gap-12">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 md:gap-12">
                 {IMPACT_METRICS.map((metric, i) => (
                   <FadeIn key={i} delay={i * 0.1}>
                     <div className={cn(
@@ -709,7 +795,7 @@ export default function App() {
                 <div className="inline-block px-4 py-1 rounded-full border border-asili-gold/30 bg-asili-gold/5 mb-8 backdrop-blur-sm">
                   <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-asili-gold">The Purest Gold Range</span>
                 </div>
-                <h1 className="text-5xl md:text-8xl lg:text-[10rem] font-bold mb-10 leading-[0.9] md:leading-[0.8] gold-gradient title-spacing hero-text-shadow-gold">
+                <h1 className="text-5xl md:text-8xl lg:text-[10rem] font-bold mb-10 leading-[1] md:leading-[0.85] gold-gradient title-spacing hero-text-shadow-gold">
                   Makueni <br />
                   <span className="italic font-serif text-asili-cream brightness-110 uppercase tracking-tighter">Gold</span>
                 </h1>
