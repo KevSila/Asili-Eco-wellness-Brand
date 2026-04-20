@@ -38,10 +38,10 @@ const BRAND_CATALOGUE = [
     icon: <Leaf className="w-5 h-5" />,
     description: "Transforming indigenous resources into world-class health products.",
     items: [
-      { name: "Raw Forest Honey", desc: "Unfiltered, nutrient-rich honey from our living laboratory.", price: "Premium" },
+      { name: "Asili Flow Shots", desc: "Honey + MCT Oil + Caffeine. Performance fuel for athletes.", price: "Performance" },
       { name: "Moringa Superfood", desc: "Cold-pressed oils and nutrient-dense leaf powders.", price: "Essential" },
       { name: "Baobab Essence", desc: "Vitamin C rich fruit pulp and revitalizing seed oils.", price: "Luxury" },
-      { name: "Indigenous Oils", desc: "Artisanal essential oils from local flora.", price: "Artisanal" }
+      { name: "Bee-Venom Skincare", desc: "Natural 'Botox' serum using ethically harvested venom.", price: "Beauty" }
     ]
   },
   {
@@ -56,17 +56,6 @@ const BRAND_CATALOGUE = [
     ]
   },
   {
-    id: "fashion",
-    title: "Afro-Eco Fashion",
-    icon: <Shirt className="w-5 h-5" />,
-    description: "Wearable sustainability rooted in African textile heritage.",
-    items: [
-      { name: "Organic Cotton Tees", desc: "Sustainably sourced cotton with natural plant dyes.", price: "Heritage" },
-      { name: "Recycled Accessories", desc: "Jewelry crafted from upcycled farm materials.", price: "Unique" },
-      { name: "Bark Cloth Accents", desc: "Traditional Ugandan bark cloth in modern silhouettes.", price: "Artisanal" }
-    ]
-  },
-  {
     id: "home",
     title: "Sustainable Home",
     icon: <Home className="w-5 h-5" />,
@@ -78,25 +67,14 @@ const BRAND_CATALOGUE = [
     ]
   },
   {
-    id: "kits",
-    title: "Wellness Kits",
-    icon: <Heart className="w-5 h-5" />,
-    description: "Curated experiences for holistic health and gifting.",
-    items: [
-      { name: "The Ritual Box", desc: "A complete morning wellness set with honey and moringa.", price: "Curated" },
-      { name: "Traveler's Kit", desc: "Compact essentials for sustainable living on the go.", price: "Essential" },
-      { name: "Eco-Gift Set", desc: "The perfect introduction to the Asili lifestyle.", price: "Giftable" }
-    ]
-  },
-  {
     id: "tech",
-    title: "Future Tech",
+    title: "Agri-Tech Hub",
     icon: <Rocket className="w-5 h-5" />,
-    description: "Scaling impact through innovation and smart systems.",
+    description: "Scaling trust through blockchain-backed traceability and satellite forage mapping.",
     items: [
-      { name: "Smart Beehives", desc: "IoT-enabled hives for optimal colony health monitoring.", price: "R&D" },
-      { name: "Circular Waste Hub", desc: "Modular systems for farm-to-fuel conversion.", price: "Infrastructure" },
-      { name: "Digital Traceability", desc: "Blockchain-backed sourcing for every product.", price: "Transparency" }
+      { name: "Glass Hive Tech", desc: "Real-time hive monitoring and QR-linked batch data.", price: "Traceability" },
+      { name: "Satellite mapping", desc: "AI-driven forage detection for optimal hive placement.", price: "Precision" },
+      { name: "Blockchain Ledger", desc: "Immutable records of purity and farmer income data.", price: "Integrity" }
     ]
   }
 ];
@@ -106,62 +84,61 @@ const HONEY_CATALOGUE = [
     id: "gold",
     title: "The Gold Collection",
     icon: <Award className="w-5 h-5" />,
-    description: "Our flagship single-origin honeys, harvested with precision and aged to perfection.",
+    description: "Our flagship single-origin honeys, verified by KeBS with a Digital Certificate of Analysis.",
     items: [
-      { name: "Single-Origin Makueni", desc: "Wildflowers & Acacia nectar. Refractometer tested < 17% moisture.", price: "Luxury" },
-      { name: "Raw Forest Reserve", desc: "Dark, medicinal honey from deep within indigenous forests.", price: "Premium" },
-      { name: "Propolis Tincture", desc: "Nature's strongest antibiotic. 70% concentrated propolis extract.", price: "Clinical" },
-      { name: "Royal Jelly Essence", desc: "The queen's fuel. Freshly harvested and cold-stored.", price: "Artisanal" }
+      { name: "Single-Origin Makueni", desc: "Acacia nectar. KeBS Certified. Refractometer moisture < 17%.", price: "Premium" },
+      { name: "The Glass Hive Batch", desc: "Batch-specific honey. Scan QR for time-lapse of your hive.", price: "Ultra-Premium" },
+      { name: "Propolis Tincture", desc: "70% concentrated propolis extract. Nature's strongest antibiotic.", price: "Clinical" },
+      { name: "Royal Jelly Essence", desc: "Freshly harvested cold-stored essence. The queen's fuel.", price: "Luxury" }
     ]
   },
   {
-    id: "infusions",
-    title: "Infusion Rituals",
-    icon: <Droplets className="w-5 h-5" />,
-    description: "Functional wellness through the alchemy of honey and potent botanicals.",
-    items: [
-      { name: "Ginger Elixir", desc: "Makueni honey slow-infused with sun-dried local ginger.", price: "Invigorating" },
-      { name: "Cinnamon Velvet", desc: "Anti-inflammatory Ceylon cinnamon suspended in raw honey.", price: "Soothing" },
-      { name: "Beeswax Wraps", desc: "Hand-crafted antibacterial food covers. The plastic-free standard.", price: "Zero Waste" },
-      { name: "Hibiscus Bloom", desc: "Rich in antioxidants. A floral, ruby-toned honey infusion.", price: "Radiant" }
-    ]
-  },
-  {
-    id: "experience",
-    title: "Hive Experiences",
+    id: "baas",
+    title: "Bee-as-a-Service",
     icon: <Users className="w-5 h-5" />,
-    description: "Immersive agri-tourism and educational journeys into the heart of the Makueni ecosystem.",
+    description: "A hybrid subscription model creating predictable cash flow and direct social impact.",
     items: [
-      { name: "The Hive Tour", desc: "A guided sensory journey through our living laboratory.", price: "Experiential" },
-      { name: "Apitherapy Workshop", desc: "Learn the ancient art of healing with bee products.", price: "Educational" },
-      { name: "The Harvest Ritual", desc: "Seasonal invitations to participate in the Makueni gold harvest.", price: "Exclusive" }
+      { name: "Adopt-a-Hive (B2C)", desc: "Rent a hive in Makueni. Get 10kg/yr of your Private Reserve.", price: "Subscription" },
+      { name: "Corporate Pollination", desc: "CSR-driven sponsorship for banks and tech companies.", price: "CSR Impact" },
+      { name: "Private Reserve", desc: "Branded honey jars for gifts. Exclusive to hive adopters.", price: "Exclusive" }
+    ]
+  },
+  {
+    id: "industrial",
+    title: "Industrial & Ecosystem",
+    icon: <Droplets className="w-5 h-5" />,
+    description: "High-value industrial supply and essential services for commercial orchards.",
+    items: [
+      { name: "Industrial Traceable", desc: "20L buckets for premium bakeries with Purity Certificates.", price: "B2B Supply" },
+      { name: "Pollination Credits", desc: "Service for citrus and mango orchards across Eastern Kenya.", price: "Service" },
+      { name: "White Labeling", desc: "Partner with Artcaffe or Java using our Quality Hub honey.", price: "Wholesale" }
     ]
   }
 ];
 
 const IMPACT_METRICS = [
   { 
-    title: "Future Vision", 
-    subtitle: "Strategic Social Growth",
-    icon: <Users className="w-10 h-10" />,
-    description: "We are developing a model to establish a network of smallholder farmers and provide specialized training to local youth.",
-    metrics: ["Planned: 500+ Farmers", "Target: Women-led", "Future Youth Hub"],
+    title: "The Glass Hive", 
+    subtitle: "Radical Transparency",
+    icon: <Search className="w-10 h-10" />,
+    description: "Transforming from honey sellers to trust providers. Eliminating fear of adulteration through real-time tech.",
+    metrics: ["QR Traceability", "Purity Guarantees", "Batch Live-Stream"],
     color: "bg-[#f4f7f2] border-[#e1e8dc] text-asili-green"
   },
   { 
-    title: "Envisioned Ecology", 
-    subtitle: "Regenerative Plans",
-    icon: <Globe className="w-10 h-10" />,
-    description: "Our goal is to restore biodiversity in ASAL regions through reforestation and future climate-resilient farming techniques.",
-    metrics: ["Planned Restoration", "Pure Organic Goals", "Nature First"],
+    title: "Hub & Spoke", 
+    subtitle: "Aggregated Impact",
+    icon: <Users className="w-10 h-10" />,
+    description: "Scaling through a central Quality Hub that empowers local producers with 'Obadoni' protocols.",
+    metrics: ["10+ Local Spokes", "KeBS Hub Testing", "Income Tracking"],
     color: "bg-[#fcf9f2] border-[#f2e7d5] text-asili-honey"
   },
   { 
-    title: "Economic Bloom", 
-    subtitle: "Sustainable Prosperity",
+    title: "Funding Magnet", 
+    subtitle: "Grant-Worthy Tech",
     icon: <TrendingUp className="w-10 h-10" />,
-    description: "Transforming raw materials into high-value premium products, ensuring fair returns and exploring global export scaling.",
-    metrics: ["Direct Vision", "Export Ready Plans", "Circular Economy"],
+    description: "Using blockchain and Satellite Forage Mapping to unlock international agri-tech grants.",
+    metrics: ["USAID/KCIC Ready", "Blockchain Logs", "Impact Data API"],
     color: "bg-[#f9f7f2] border-[#eceae4] text-[#8b4513]"
   }
 ];
@@ -170,17 +147,17 @@ const PARTNERS_CONTENT = [
   { 
     title: "Investors", 
     value: "High-Growth Potential", 
-    desc: "Join a scalable movement bridging African heritage with the multi-billion dollar global wellness market." 
+    desc: "Join a scalable movement bridging 'Bee-as-a-Service' with the multi-billion dollar global wellness market." 
   },
   { 
-    title: "Distributors", 
-    value: "Premium Logistics", 
-    desc: "Exclusive access to single-origin, certified products with full traceability for premium retail chains." 
+    title: "Orchard Owners", 
+    value: "Pollination Credits", 
+    desc: "Partner with our mobile hives to increase your mango and citrus yields through precision pollination services." 
   },
   { 
-    title: "Agritech Partners", 
-    value: "Innovation Hub", 
-    desc: "Pilot solutions in our living laboratory—from IoT beehives to circular waste-to-energy systems." 
+    title: "Premium B2B", 
+    value: "Traceable Supply", 
+    desc: "Bespoke, large-scale supply for high-end bakeries and pharma brands requiring 'KeBS' purity certification." 
   }
 ];
 
@@ -523,11 +500,11 @@ export default function App() {
                   <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-asili-green mt-0.5">Healing People & The Planet</span>
                 </div>
                 <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 lg:mb-8 leading-[1.1] md:leading-[1] text-asili-green title-spacing hero-text-shadow">
-                  The Origin of <br />
-                  <span className="italic font-serif text-asili-honey">Wellness.</span>
+                  Trust & <br />
+                  <span className="italic font-serif text-asili-honey">Traceability.</span>
                 </h1>
                 <p className="text-lg md:text-xl lg:text-2xl text-asili-green/70 mb-8 lg:mb-10 leading-relaxed font-light max-w-xl">
-                  Transforming Africa's indigenous resources into world-class wellness products—rooted in heritage, scaled by technology.
+                  Transforming from honey sellers to trust and technology providers. Radical, real-time traceability rooted in African heritage.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 lg:gap-5">
                   <button onClick={() => setView("luxury")} className="group bg-asili-green text-white px-8 lg:px-10 py-4 lg:py-5 rounded-full font-bold flex items-center justify-center gap-3 hover:bg-asili-leaf transition-all shadow-[0_20px_40px_rgba(45,79,30,0.2)]">
@@ -541,26 +518,63 @@ export default function App() {
             </div>
           </Section>
 
-          {/* Intro Section */}
-          <Section id="about" className="bg-white">
-            <div className="max-w-4xl mx-auto text-center">
-              <FadeIn>
-                <h2 className="text-5xl font-bold mb-8 text-asili-green">The Origin of Essence</h2>
-                <p className="text-2xl text-asili-green/80 italic mb-12">
-                  "Asili is a Kiswahili word meaning origin, essence, and nature."
-                </p>
-                <div className="grid md:grid-cols-3 gap-8 text-left">
-                  <div className="p-8 bg-asili-cream rounded-2xl border border-asili-honey/10">
-                    <h4 className="font-bold text-asili-honey mb-4">Origin</h4>
-                    <p className="text-sm opacity-70">Deeply rooted in the ancestral wisdom of African ecology.</p>
+          {/* The Glass Hive Section */}
+          <Section id="traceability-info" className="bg-asili-green text-white overflow-hidden relative">
+            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
+            <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center relative z-10">
+              <div className="relative group">
+                <div className="absolute -inset-10 bg-asili-honey/20 blur-[100px] rounded-full opacity-50 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative bg-asili-dark/50 backdrop-blur-2xl p-8 lg:p-16 rounded-[4rem] border border-white/10 shadow-2xl overflow-hidden">
+                  <div className="absolute top-0 right-0 p-10 opacity-10">
+                    <Search className="w-40 h-40" />
                   </div>
-                  <div className="p-8 bg-asili-cream rounded-2xl border border-asili-honey/10">
-                    <h4 className="font-bold text-asili-honey mb-4">Essence</h4>
-                    <p className="text-sm opacity-70">Preserving the pure chemical profiles of indigenous flora.</p>
-                  </div>
-                  <div className="p-8 bg-asili-cream rounded-2xl border border-asili-honey/10">
-                    <h4 className="font-bold text-asili-honey mb-4">Nature</h4>
-                    <p className="text-sm opacity-70">Regenerative systems that heal the land while serving you.</p>
+                  <FadeIn>
+                    <div className="flex items-center gap-4 mb-8">
+                      <div className="w-12 h-12 rounded-xl bg-asili-honey/20 flex items-center justify-center text-asili-honey">
+                        <TrendingUp className="w-6 h-6" />
+                      </div>
+                      <span className="text-xs font-bold uppercase tracking-widest text-asili-honey">Radical Real-Time Traceability</span>
+                    </div>
+                    <h2 className="text-5xl lg:text-6xl font-bold mb-8 leading-tight">The Glass <br /><span className="text-asili-honey">Hive.</span></h2>
+                    <p className="text-xl text-white/70 mb-10 leading-relaxed font-light">
+                      "Asili: The only honey you can watch being made."
+                    </p>
+                    <div className="space-y-6">
+                      <div className="flex gap-5 items-start">
+                        <div className="w-8 h-8 rounded-full bg-asili-honey/20 flex items-center justify-center text-asili-honey text-xs font-bold shrink-0">01</div>
+                        <p className="text-white/60">Every jar features a unique QR code linking to a time-lapse of its specific hive.</p>
+                      </div>
+                      <div className="flex gap-5 items-start">
+                        <div className="w-8 h-8 rounded-full bg-asili-honey/20 flex items-center justify-center text-asili-honey text-xs font-bold shrink-0">02</div>
+                        <p className="text-white/60">Digital "Certificate of Analysis" from our Quality Hub for every batch.</p>
+                      </div>
+                      <div className="flex gap-5 items-start">
+                        <div className="w-8 h-8 rounded-full bg-asili-honey/20 flex items-center justify-center text-asili-honey text-xs font-bold shrink-0">03</div>
+                        <p className="text-white/60">Blockchain-backed health logs ensuring zero adulteration from hive to home.</p>
+                      </div>
+                    </div>
+                  </FadeIn>
+                </div>
+              </div>
+              
+              <FadeIn delay={0.2}>
+                <div className="space-y-10">
+                  <div className="inline-block px-4 py-1.5 rounded-full bg-asili-honey/10 border border-asili-honey/20 text-asili-honey text-[10px] font-bold uppercase tracking-widest">Tech as a Trust Provider</div>
+                  <h3 className="text-4xl lg:text-5xl font-bold leading-tight">Eliminating the <br /><span className="text-asili-honey italic">"Is This Real?"</span> Doubt</h3>
+                  <p className="text-lg text-white/60 leading-relaxed">
+                    Most brands put a "100% Pure" sticker on a jar. We give you a window into the harvest. In a market where trust is the scarcest resource, Asili uses high-yield biology and transparency tech to create an unbreakable bond between the worker bee and the wellness shopper.
+                  </p>
+                  <div className="pt-8 grid sm:grid-cols-2 gap-8">
+                    <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+                      <Droplets className="text-asili-honey w-8 h-8 mb-4" />
+                      <h4 className="font-bold mb-2">Purity Verified</h4>
+                      <p className="text-xs text-white/40">KeBS & KePHIS integrated testing protocols at our Makueni Hub.</p>
+                    </div>
+                    <div className="p-6 bg-white/5 rounded-3xl border border-white/10">
+                      <Rocket className="text-asili-honey w-8 h-8 mb-4" />
+                      <h4 className="font-bold mb-2">High-Yield Tech</h4>
+                      <p className="text-xs text-white/40">Langstroth Hive optimization for 3x the standard yield.</p>
+                    </div>
                   </div>
                 </div>
               </FadeIn>
@@ -572,24 +586,24 @@ export default function App() {
             <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
               <FadeIn>
                 <div className="space-y-8">
-                  <h2 className="text-5xl md:text-6xl font-bold text-asili-green leading-tight">Our Living <br /><span className="text-asili-honey italic font-serif">Laboratory</span></h2>
+                  <h2 className="text-5xl md:text-6xl font-bold text-asili-green leading-tight">Beyond <br /><span className="text-asili-honey italic font-serif">Purity</span></h2>
                   <div className="space-y-6 text-lg text-asili-green/70 leading-relaxed font-light">
-                    <p>Asili is rooted in a family legacy—a farm in Makueni that serves as our primary R&D hub. Here, we pilot tech-enabled agriculture and circular waste systems that we aim to scale to a future community network.</p>
-                    <p>By aiming to integrate IoT monitoring with traditional organic wisdom, we strive to ensure that every product—from honey to moringa—is harvested at its peak medicinal potency.</p>
+                    <p>In a market where "purity" is a cliché, Asili defines a new standard through **Radical Traceability**. We don't just put a sticker on a jar; we provide a link to the life of the hive.</p>
+                    <p>Our Hub-and-Spoke model scale impact by providing tech and high-yield 'Obadoni' protocols to local farmers in Makueni, buying back their gold and ensuring KeBS-certified integrity.</p>
                   </div>
                   <div className="grid grid-cols-2 gap-8 pt-6 border-t border-asili-honey/10">
                     <div className="flex items-start gap-4">
                       <div className="w-10 h-10 rounded-xl bg-asili-honey/10 flex items-center justify-center text-asili-honey"><Droplets className="w-5 h-5" /></div>
                       <div>
-                        <p className="font-bold text-asili-green">Farming</p>
-                        <p className="text-xs opacity-50">Regenerative Practice</p>
+                        <p className="font-bold text-asili-green">Hub & Spoke</p>
+                        <p className="text-xs opacity-50">Aggregated Scaling</p>
                       </div>
                     </div>
                     <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-asili-honey/10 flex items-center justify-center text-asili-honey"><Zap className="w-5 h-5" /></div>
+                      <div className="w-10 h-10 rounded-xl bg-asili-honey/10 flex items-center justify-center text-asili-honey"><Search className="w-5 h-5" /></div>
                       <div>
-                        <p className="font-bold text-asili-green">Circular Tech</p>
-                        <p className="text-xs opacity-50">Zero Waste Research</p>
+                        <p className="font-bold text-asili-green">The Glass Hive</p>
+                        <p className="text-xs opacity-50">Real-Time Integrity</p>
                       </div>
                     </div>
                   </div>
@@ -618,6 +632,58 @@ export default function App() {
                 </FadeIn>
               </div>
               <CatalogueTabs data={BRAND_CATALOGUE} theme="nature" />
+            </div>
+          </Section>
+
+          <Section id="baas-info" className="bg-asili-cream border-y border-asili-honey/10">
+            <div className="max-w-7xl mx-auto">
+              <div className="text-center mb-20">
+                <FadeIn>
+                  <span className="text-asili-honey font-bold uppercase tracking-widest text-xs mb-4 block">A New Business Model</span>
+                  <h2 className="text-5xl lg:text-6xl font-bold mb-6 text-asili-green uppercase tracking-tighter">Bee-as-a-Service (BaaS)</h2>
+                  <p className="text-asili-green/60 max-w-2xl mx-auto text-xl italic">"Predictable cash flow meeting radical direct impact."</p>
+                </FadeIn>
+              </div>
+              
+              <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
+                <FadeIn>
+                  <div className="h-full p-10 lg:p-16 rounded-[4rem] bg-white border border-asili-honey/10 hover:shadow-2xl transition-all duration-700">
+                    <div className="w-16 h-16 rounded-2xl bg-asili-honey/10 flex items-center justify-center text-asili-honey mb-10">
+                      <Heart className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-3xl font-bold text-asili-green mb-6">Adopt-A-Hive (B2C)</h3>
+                    <p className="text-lg text-asili-green/70 mb-10 leading-relaxed font-light">
+                      Rent a hive in Makueni for a yearly fee. Enjoy 10kg of the finest harvest branded as your "Private Reserve," while receiving monthly digital updates on your colony's health.
+                    </p>
+                    <ul className="space-y-4">
+                      {["10kg Guaranteed Harvest", "Monthly Bee Updates", "Branded Private Reserve", "Personalized Hive Plaque"].map((item, i) => (
+                        <li key={i} className="flex items-center gap-3 text-sm font-bold text-asili-green/60">
+                          <Leaf className="w-4 h-4 text-asili-honey" /> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </FadeIn>
+                
+                <FadeIn delay={0.2}>
+                  <div className="h-full p-10 lg:p-16 rounded-[4rem] bg-asili-green text-white hover:shadow-2xl transition-all duration-700">
+                    <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-asili-honey mb-10">
+                      <Globe className="w-8 h-8" />
+                    </div>
+                    <h3 className="text-3xl font-bold mb-6">Corporate CSR (B2B)</h3>
+                    <p className="text-lg text-white/70 mb-10 leading-relaxed font-light">
+                      Sponsor "Pollination Zones" to meet your SDG targets. We provide branded, KeBS-certified honey for your VIP clients and impact data for your annual CSR reports.
+                    </p>
+                    <ul className="space-y-4">
+                      {["SDG Impact Reporting", "Premium Client Gifting", "Pollination Area Brading", "Tax-Deductible CSR"].map((item, i) => (
+                        <li key={i} className="flex items-center gap-3 text-sm font-bold text-white/40">
+                          <Zap className="w-4 h-4 text-asili-honey" /> {item}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </FadeIn>
+              </div>
             </div>
           </Section>
 
@@ -735,27 +801,34 @@ export default function App() {
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-asili-honey/10 blur-[150px] -mr-64 -mt-64 rounded-full"></div>
             <div className="grid lg:grid-cols-2 gap-20 items-center relative z-10">
               <FadeIn>
-                <h2 className="text-6xl font-bold mb-10 leading-tight">Our Financial <br /><span className="text-asili-honey">Roadmap</span></h2>
+                <h2 className="text-6xl font-bold mb-10 leading-tight">Strategic <br /><span className="text-asili-honey">Roadmap</span></h2>
                 <div className="space-y-8">
                   <div className="flex gap-6 items-start">
                     <div className="text-4xl font-serif text-asili-honey">01</div>
                     <div>
-                      <h4 className="text-xl font-bold mb-2">Phase 1: Lean Scaling</h4>
-                      <p className="text-white/60">Utilizing family resources for initial production while establishing white-label partnerships for immediate revenue.</p>
+                      <h4 className="text-xl font-bold mb-2">Months 1-3: Data Alpha</h4>
+                      <p className="text-white/60">Launching 6 'Alpha' hives in Makueni. High-precision data collection using refractometers and IoT health monitoring.</p>
                     </div>
                   </div>
                   <div className="flex gap-6 items-start">
                     <div className="text-4xl font-serif text-asili-honey">02</div>
                     <div>
-                      <h4 className="text-xl font-bold mb-2">Phase 2: Hub-and-Spoke</h4>
-                      <p className="text-white/60">Establishing community processing centers to scale impact and volume across the ASAL regions.</p>
+                      <h4 className="text-xl font-bold mb-2">Months 4-6: BaaS Launch</h4>
+                      <p className="text-white/60">Opening 'Adopt-a-Hive' pre-sales. Scaling from 6 to 20 hives through a direct-to-consumer and corporate CSR model.</p>
+                    </div>
+                  </div>
+                  <div className="flex gap-6 items-start">
+                    <div className="text-4xl font-serif text-asili-honey">03</div>
+                    <div>
+                      <h4 className="text-xl font-bold mb-2">Year 1+: Hub & Spoke</h4>
+                      <p className="text-white/60">Expanding to local 'Spoke' farmers. Providing hives and tech in exchange for raw honey, processed at our Quality Hub.</p>
                     </div>
                   </div>
                   <div className="flex gap-6 items-start border-t border-white/10 pt-8 mt-10">
                     <Rocket className="text-asili-honey w-10 h-10" />
                     <div>
                       <h4 className="text-xl font-bold mb-2">Global Exports</h4>
-                      <p className="text-white/60">Targeting diaspora and premium wellness markets in the EU, US, and UAE with certified organic exports.</p>
+                      <p className="text-white/60">Targeting premium wellness markets with KeBS-certified, blockchain-traceable functional food exports.</p>
                     </div>
                   </div>
                 </div>
@@ -804,13 +877,13 @@ export default function App() {
                 <div className="inline-block px-4 py-1 rounded-full border border-asili-gold/30 bg-asili-gold/5 mb-8 backdrop-blur-sm">
                   <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-asili-gold">The Purest Gold Range</span>
                 </div>
-                <h1 className="text-5xl md:text-8xl lg:text-[10rem] font-bold mb-10 leading-[1] md:leading-[0.85] gold-gradient title-spacing hero-text-shadow-gold">
-                  Makueni <br />
-                  <span className="italic font-serif text-asili-cream brightness-110 uppercase tracking-tighter">Gold</span>
+                <h1 className="text-5xl md:text-8xl lg:text-[10rem] font-bold mb-10 leading-[1] md:leading-[0.85] gold-gradient title-spacing hero-text-shadow-gold text-center">
+                  Glass <br />
+                  <span className="italic font-serif text-asili-cream brightness-110 uppercase tracking-tighter">Hive™</span>
                 </h1>
-                <p className="text-lg md:text-2xl text-asili-cream/70 max-w-2xl mx-auto mb-14 leading-relaxed font-light">
-                  Scientifically validated. Single-origin excellence. <br className="hidden md:block" />
-                  <span className="opacity-50 text-sm md:text-lg italic mt-4 block">Refractometer Tested • Cold Settled • Pure Essence</span>
+                <p className="text-lg md:text-2xl text-asili-cream/70 max-w-2xl mx-auto mb-14 leading-relaxed font-light text-center">
+                  The only honey you can watch being made. <br className="hidden md:block" />
+                  <span className="opacity-50 text-sm md:text-lg italic mt-4 block">Radical Traceability • Blockchain Verified • Pure Makueni Gold</span>
                 </p>
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
                   <button className="w-full sm:w-auto bg-asili-gold text-asili-black px-12 py-5 rounded-full font-black uppercase tracking-widest text-sm hover:scale-105 transition-all shadow-[0_0_50px_rgba(212,175,55,0.4)]">
@@ -840,17 +913,17 @@ export default function App() {
             <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
               <div>
                 <h3 className="text-2xl font-bold text-asili-gold mb-2 flex items-center gap-2">
-                  <Package className="w-5 h-5" /> The Ritual Subscription
+                  <Package className="w-5 h-5" /> Bee-as-a-Service (BaaS)
                 </h3>
-                <p className="text-asili-cream/60">Unlock fresh, seasonal harvests delivered directly from the Makueni plains. Save 15% on limited Gold Collection batches.</p>
+                <p className="text-asili-cream/60">"Adopt-a-Hive" for guaranteed harvests and monthly digital 'Bee Updates'. Predictable impact, premium purity.</p>
               </div>
               <div className="flex gap-4">
                 <div className="px-4 py-3 bg-asili-dark border border-asili-gold/20 rounded-xl text-sm flex flex-col">
-                  <span className="text-asili-gold font-bold">Monthly Harvest</span>
-                  <span className="text-[10px] text-asili-cream/40 uppercase tracking-widest">1kg Reserved Jar</span>
+                  <span className="text-asili-gold font-bold">10kg Harvest</span>
+                  <span className="text-[10px] text-asili-cream/40 uppercase tracking-widest">Your Private Reserve</span>
                 </div>
                 <button className="bg-asili-gold text-asili-black px-8 py-3 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(212,175,55,0.2)] hover:bg-asili-gold-light transition-all">
-                  Join the Circle
+                  Adopt a Hive
                 </button>
               </div>
             </div>
@@ -872,12 +945,29 @@ export default function App() {
                   </div>
                   <div>
                     <h4 className="text-asili-gold font-bold text-xl mb-2 flex items-center gap-2">
-                      <Sprout className="w-5 h-5" /> Honey Maturity
+                      <Droplets className="w-5 h-5" /> The Quality Hub
                     </h4>
                     <p className="text-asili-cream/60 leading-relaxed">
-                      Unlike industrial honey that is "flash-heated," Asili honey is cold-settled. This preserves the natural enzymes, diastase, and floral notes that define truly mature honey.
+                      Asili acts as a central Quality Hub. We perform rigorous testing—from KeBS certification to internal refractometer analysis—for every drop of honey harvested from our 'Spoke' farmers in the Makueni ecosystem.
                     </p>
                   </div>
+                  <div className="pt-8 grid grid-cols-3 gap-4">
+                    <div className="text-center p-4 bg-asili-gold/5 border border-asili-gold/10 rounded-2xl">
+                      <p className="text-asili-gold font-bold text-lg">17%</p>
+                      <p className="text-[8px] uppercase tracking-widest text-asili-cream/40">Max Moisture</p>
+                    </div>
+                    <div className="text-center p-4 bg-asili-gold/5 border border-asili-gold/10 rounded-2xl">
+                      <p className="text-asili-gold font-bold text-lg">KeBS</p>
+                      <p className="text-[8px] uppercase tracking-widest text-asili-cream/40">Verified Batch</p>
+                    </div>
+                    <div className="text-center p-4 bg-asili-gold/5 border border-asili-gold/10 rounded-2xl">
+                      <p className="text-asili-gold font-bold text-lg">QR</p>
+                      <p className="text-[8px] uppercase tracking-widest text-asili-cream/40">Digital COA</p>
+                    </div>
+                  </div>
+                  <p className="text-asili-cream/60 leading-relaxed pt-8 border-t border-asili-gold/10">
+                    Unlike industrial honey that is "flash-heated," Asili honey is cold-settled. This preserves the natural enzymes, diastase, and floral notes that define truly mature honey.
+                  </p>
                 </div>
               </FadeIn>
               <FadeIn delay={0.2}>
