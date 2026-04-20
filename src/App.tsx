@@ -192,7 +192,7 @@ const CatalogueTabs = ({ data, theme = "nature" }: { data: any[], theme?: "natur
               <motion.div 
                 layoutId="activeTab"
                 className={cn(
-                  "absolute -bottom-8 left-0 right-0 h-0.5",
+                  "absolute bottom-0 left-0 right-0 h-0.5",
                   theme === "luxury" ? "bg-asili-gold" : "bg-asili-green"
                 )}
               />
@@ -277,6 +277,298 @@ const CatalogueTabs = ({ data, theme = "nature" }: { data: any[], theme?: "natur
     </div>
   );
 };
+
+// Custom Visual Components to replace problematic images
+const HoneyTechIllustration = () => (
+  <div className="relative w-full h-full min-h-[400px] flex items-center justify-center p-8">
+    <div className="absolute inset-0 bg-asili-honey/5 rounded-[5rem] overflow-hidden">
+      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#d4af37 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
+    </div>
+    
+    <div className="relative z-10 w-full max-w-lg aspect-square flex items-center justify-center">
+      {/* Background circles */}
+      <motion.div 
+        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
+        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute w-4/5 h-4/5 rounded-full bg-asili-honey/10 blur-3xl"
+      />
+      
+      {/* Main Illustration Structure */}
+      <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-2xl">
+        {/* Hexagonal Pattern */}
+        <defs>
+          <pattern id="hexagons" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="scale(0.5)">
+            <path d="M20 0L37.32 10V30L20 40L2.68 30V10L20 0Z" fill="none" stroke="#d4af37" strokeWidth="0.5" opacity="0.3" />
+          </pattern>
+        </defs>
+        
+        {/* Abstract Leaf/Nature Pattern */}
+        <motion.path 
+          initial={{ pathLength: 0, opacity: 0 }}
+          animate={{ pathLength: 1, opacity: 1 }}
+          transition={{ duration: 2, ease: "easeInOut" }}
+          d="M200 80C200 80 260 140 260 200C260 260 200 320 200 320C200 320 140 260 140 200C140 140 200 80 200 80Z" 
+          fill="#2d4f1e" 
+          opacity="0.1"
+        />
+        
+        {/* Connected Nodes representing Traceability */}
+        <g>
+          {[
+            { x: 120, y: 150 }, { x: 280, y: 150 }, 
+            { x: 200, y: 120 }, { x: 200, y: 280 },
+            { x: 150, y: 230 }, { x: 250, y: 230 }
+          ].map((node, i) => (
+            <motion.circle 
+              key={i}
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              transition={{ delay: 0.5 + i * 0.1 }}
+              cx={node.x} cy={node.y} r="4" fill="#d4af37" 
+            />
+          ))}
+          
+          <motion.path 
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 1.5, delay: 1 }}
+            d="M200 120 L120 150 L150 230 L200 280 L250 230 L280 150 Z" 
+            fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="4 4"
+          />
+        </g>
+        
+        {/* Central Icon */}
+        <g transform="translate(180, 180) scale(0.8)">
+          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.1" />
+          <path d="M12 2v20M2 12h20M7 7l10 10M17 7L7 10" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" />
+        </g>
+        
+        {/* Golden Drops */}
+        <motion.circle 
+          animate={{ y: [0, 15, 0], opacity: [0.4, 0.8, 0.4] }}
+          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+          cx="200" cy="200" r="30" fill="url(#hexagons)" opacity="0.5"
+        />
+      </svg>
+      
+      {/* Floating Elements */}
+      <div className="absolute top-10 right-10 p-4 glass rounded-2xl border border-asili-honey/20 shadow-xl backdrop-blur-md">
+        <div className="flex items-center gap-2 mb-1">
+          <div className="w-2 h-2 rounded-full bg-asili-honey"></div>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-asili-green">Origin Found</span>
+        </div>
+        <p className="text-[9px] font-mono text-asili-green/40 leading-none">MKW-254-HIVE7</p>
+      </div>
+    </div>
+  </div>
+);
+
+const ResearchIllustration = () => (
+  <div className="relative w-full h-[500px] flex items-center justify-center bg-asili-dark/50 rounded-[3.5rem] border border-asili-gold/10 overflow-hidden p-12">
+    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#d4af37 0.5px, transparent 0.5px), linear-gradient(90deg, #d4af37 0.5px, transparent 0.5px)', backgroundSize: '40px 40px' }}></div>
+    
+    <div className="relative z-10 w-full max-w-md h-full flex flex-col justify-center">
+      <div className="flex items-center gap-4 mb-8">
+        <div className="px-3 py-1 rounded bg-asili-gold text-asili-black text-[10px] font-bold uppercase tracking-wider">Analysis Active</div>
+        <div className="h-px flex-1 bg-asili-gold/20"></div>
+      </div>
+      
+      <div className="space-y-6">
+        {[
+          { label: "Purity Index", val: "99.8%", color: "text-asili-gold" },
+          { label: "Moisture Content", val: "17.2%", color: "text-asili-gold" },
+          { label: "Pollen Count", val: "High Density", color: "text-asili-cream" }
+        ].map((item, i) => (
+          <motion.div 
+            key={i}
+            initial={{ x: -20, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ delay: i * 0.2 }}
+            className="flex flex-col gap-1"
+          >
+            <div className="flex justify-between text-[10px] uppercase tracking-widest opacity-40">
+              <span>{item.label}</span>
+              <span>Metric Verified</span>
+            </div>
+            <div className="flex items-end gap-4">
+              <span className={`text-3xl font-mono font-bold ${item.color}`}>{item.val}</span>
+              <div className="h-2 flex-1 bg-white/5 rounded-full overflow-hidden mb-2">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: "80%" }}
+                  transition={{ duration: 1.5, delay: 0.5 }}
+                  className="h-full bg-asili-gold/40"
+                />
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </div>
+      
+      {/* Schematic Hive SVG */}
+      <div className="mt-12 w-full flex justify-center">
+        <svg viewBox="0 0 200 100" className="w-full opacity-60">
+          <path d="M40 20 L160 20 L160 80 L40 80 Z" fill="none" stroke="#d4af37" strokeWidth="1" />
+          <path d="M40 40 L160 40 M40 60 L160 60" stroke="#d4af37" strokeWidth="1" opacity="0.3" />
+          <circle cx="100" cy="50" r="15" fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="3 3" />
+          <path d="M100 35 L100 65 M85 50 L115 50" stroke="#d4af37" strokeWidth="1" opacity="0.5" />
+        </svg>
+      </div>
+    </div>
+  </div>
+);
+
+const AlchemyIllustration = () => (
+  <div className="relative w-full h-[600px] rounded-[4rem] bg-asili-dark/80 border border-white/5 overflow-hidden flex items-center justify-center p-12">
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#d4af3710_0%,transparent_70%)]"></div>
+    
+    <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center">
+      {/* Abstract Molecular Gold */}
+      <div className="relative mb-12">
+        <motion.div 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+          className="w-64 h-64 border border-asili-gold/20 rounded-full flex items-center justify-center"
+        >
+          <motion.div 
+            animate={{ rotate: -360 }}
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="w-48 h-48 border border-asili-gold/40 rounded-full flex items-center justify-center border-dashed"
+          >
+            <div className="w-24 h-24 bg-asili-gold/30 rounded-full blur-xl animate-pulse"></div>
+          </motion.div>
+        </motion.div>
+        
+        {/* Atoms/Nodes */}
+        {[0, 60, 120, 180, 240, 300].map((deg, i) => (
+          <motion.div 
+            key={i}
+            animate={{ transform: `rotate(${deg}deg) translateY(-120px) scale(${[1, 1.2, 1][i%3]})` }}
+            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+            className="absolute top-1/2 left-1/2 w-3 h-3 bg-asili-gold rounded-full shadow-[0_0_15px_#d4af37]"
+            style={{ marginTop: '-6px', marginLeft: '-6px' }}
+          />
+        ))}
+      </div>
+      
+      <div className="space-y-4">
+        <h3 className="text-asili-gold font-bold text-4xl italic font-serif">Aqueous Gold™</h3>
+        <p className="text-white/40 text-sm max-w-sm font-light leading-relaxed">
+          The molecular signature of Makueni blossom nectar, captured and verified for maximum enzymatic activity.
+        </p>
+        <div className="flex gap-4 justify-center pt-4">
+          <div className="text-center">
+            <span className="block text-asili-gold font-mono text-lg font-bold">17.5%</span>
+            <span className="text-[8px] uppercase tracking-widest opacity-40">Humidity</span>
+          </div>
+          <div className="w-px h-8 bg-white/10"></div>
+          <div className="text-center">
+            <span className="block text-asili-gold font-mono text-lg font-bold">8.4 PH</span>
+            <span className="text-[8px] uppercase tracking-widest opacity-40">Alkalinity</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+);
+
+const HeritageIllustration = () => (
+  <div className="relative w-full h-[400px] lg:h-[600px] flex items-center justify-center bg-asili-honey/5 rounded-[3.5rem] border border-asili-honey/10 overflow-hidden group">
+    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#2d4f1e 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
+    
+    <div className="relative z-10 w-full max-w-sm flex flex-col items-center">
+      <div className="relative mb-8">
+        <motion.div 
+          animate={{ scale: [1, 1.05, 1] }}
+          transition={{ duration: 6, repeat: Infinity }}
+          className="w-48 h-48 rounded-full border border-asili-green/20 flex items-center justify-center"
+        >
+          <div className="w-40 h-40 rounded-full border border-asili-green/40 flex items-center justify-center border-dashed">
+            <Leaf className="w-16 h-16 text-asili-green opacity-40" />
+          </div>
+        </motion.div>
+        
+        {/* Geographic coordinates or markers */}
+        <div className="absolute -top-4 -right-4 p-3 bg-white rounded-xl shadow-lg border border-asili-honey/20">
+          <p className="text-[10px] font-bold text-asili-green">LOCATION</p>
+          <p className="text-[8px] font-mono opacity-50">1.8025° S, 37.6203° E</p>
+        </div>
+      </div>
+      
+      <div className="text-center space-y-4 px-8">
+        <h4 className="text-2xl font-bold text-asili-green font-serif">Makueni Dry-Lands</h4>
+        <p className="text-xs text-asili-green/60 leading-relaxed uppercase tracking-[0.2em]">High yield floral density • Indigenous Acacia • Community Verified</p>
+        <div className="pt-4 flex gap-2 justify-center">
+          {[1, 2, 3, 4, 5].map(i => (
+            <div key={i} className="w-1.5 h-1.5 rounded-full bg-asili-honey/30"></div>
+          ))}
+        </div>
+      </div>
+    </div>
+    
+    {/* Abstract terrain lines */}
+    <svg className="absolute bottom-0 left-0 w-full opacity-10" viewBox="0 0 400 100">
+      <path d="M0 80 Q100 20 200 80 T400 80" fill="none" stroke="#2d4f1e" strokeWidth="2" />
+      <path d="M0 90 Q100 30 200 90 T400 90" fill="none" stroke="#2d4f1e" strokeWidth="2" />
+    </svg>
+  </div>
+);
+
+const LuxuryHeroIllustration = () => (
+  <div className="absolute inset-0 overflow-hidden">
+    <div className="absolute inset-0 bg-asili-black"></div>
+    {/* Dynamic particles or light bokeh */}
+    <div className="absolute inset-0 opacity-30">
+      {Array.from({ length: 20 }).map((_, i) => (
+        <motion.div
+          key={i}
+          animate={{
+            y: [0, -100, 0],
+            opacity: [0.2, 0.5, 0.2],
+            scale: [1, 1.2, 1]
+          }}
+          transition={{
+            duration: 5 + i * 2,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+          className="absolute bg-asili-gold rounded-full"
+          style={{
+            width: Math.random() * 4 + 1 + 'px',
+            height: Math.random() * 4 + 1 + 'px',
+            left: Math.random() * 100 + '%',
+            top: Math.random() * 100 + '%',
+            filter: 'blur(1px)'
+          }}
+        />
+      ))}
+    </div>
+    
+    {/* Large abstract glow */}
+    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl aspect-square bg-[radial-gradient(circle,rgba(212,175,55,0.15)_0%,transparent_70%)] blur-[100px]"></div>
+    
+    {/* Geometric structural lines */}
+    <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 1920 1080">
+      <defs>
+        <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#d4af37" />
+          <stop offset="100%" stopColor="transparent" />
+        </linearGradient>
+      </defs>
+      <g stroke="url(#gold-grad)" strokeWidth="0.5" fill="none">
+        <circle cx="960" cy="540" r="400" />
+        <circle cx="960" cy="540" r="600" />
+        <path d="M0 540 L1920 540 M960 0 L960 1080" />
+        <motion.path 
+          animate={{ rotate: 360 }}
+          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+          style={{ transformOrigin: 'center' }}
+          d="M560 540 L1360 540 M960 140 L960 940" 
+        />
+      </g>
+    </svg>
+  </div>
+);
 
 const Section = ({ children, className, id }: { children: React.ReactNode, className?: string, id?: string }) => (
   <section id={id} className={cn("py-20 px-6 md:px-12 lg:px-24", className)}>
@@ -373,7 +665,7 @@ export default function App() {
         )}
       >
         <Zap className="w-8 h-8" />
-        <span className="absolute -top-12 right-0 bg-white text-black text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-xl border border-black/5 animate-bounce">
+        <span className="hidden sm:block absolute -top-12 right-0 bg-white text-black text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-xl border border-black/5 animate-bounce">
           Chat with Founder
         </span>
       </motion.button>
@@ -510,27 +802,24 @@ export default function App() {
         /* BRAND (NATURE) VIEW */
         <main className="pt-20">
           {/* Brand Hero */}
-          <Section className="relative min-h-[90vh] lg:min-h-screen flex items-center pt-24 lg:pt-0 overflow-hidden bg-asili-cream">
+          <Section className="relative min-h-[80vh] lg:min-h-screen flex items-center pt-2 lg:pt-0 overflow-hidden bg-asili-cream">
             <div className="absolute inset-0 z-0">
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,#e1e8dc_0%,transparent_70%)] opacity-40"></div>
-              <img 
-                src="https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?q=80&w=2013&auto=format&fit=crop" 
-                alt="African Eco-Wellness" 
-                className="absolute right-[-20%] lg:right-[-10%] top-[40%] lg:top-[10%] w-full lg:w-2/3 h-1/2 lg:h-4/5 object-cover rounded-[5rem] lg:rounded-[10rem] opacity-20 lg:opacity-30 mix-blend-multiply"
-                referrerPolicy="no-referrer"
-              />
+              <div className="absolute right-[-20%] lg:right-[-5%] top-[5%] lg:top-[10%] w-full lg:w-1/2 h-full lg:h-4/5 opacity-40 lg:opacity-100">
+                <HoneyTechIllustration />
+              </div>
             </div>
             <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
               <FadeIn>
-                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-asili-honey/30 bg-asili-honey/5 mb-6 lg:mb-8">
+                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-asili-honey/30 bg-asili-honey/5 mb-4 lg:mb-6">
                   <span className="w-2 h-2 rounded-full bg-asili-honey animate-pulse"></span>
                   <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-asili-green mt-0.5">Healing People & The Planet</span>
                 </div>
-                <h1 className="text-5xl md:text-7xl lg:text-8xl font-bold mb-6 lg:mb-8 leading-[1.1] md:leading-[1] text-asili-green title-spacing hero-text-shadow">
+                <h1 className="text-4xl sm:text-7xl lg:text-8xl font-bold mb-4 lg:mb-6 leading-[1.1] md:leading-[1] text-asili-green title-spacing hero-text-shadow">
                   Trust & <br />
                   <span className="italic font-serif text-asili-honey">Traceability.</span>
                 </h1>
-                <p className="text-lg md:text-xl lg:text-2xl text-asili-green/70 mb-8 lg:mb-10 leading-relaxed font-light max-w-xl">
+                <p className="text-lg md:text-xl lg:text-2xl text-asili-green/70 mb-6 lg:mb-8 leading-relaxed font-light max-w-xl">
                   We don't just provide honey; we provide truth. Asili delivers absolute trust through real-time traceability systems deeply rooted in our Kenyan heritage.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 lg:gap-5">
@@ -562,7 +851,7 @@ export default function App() {
                       </div>
                       <span className="text-xs font-bold uppercase tracking-widest text-asili-honey">Radical Real-Time Traceability</span>
                     </div>
-                    <h2 className="text-5xl lg:text-6xl font-bold mb-8 leading-tight">The Glass <br /><span className="text-asili-honey">Hive.</span></h2>
+                    <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-8 leading-tight">The Glass <br /><span className="text-asili-honey">Hive.</span></h2>
                     <p className="text-xl text-white/70 mb-10 leading-relaxed font-light">
                       "Asili: The only honey you can watch being made."
                     </p>
@@ -587,7 +876,7 @@ export default function App() {
               <FadeIn delay={0.2}>
                 <div className="space-y-10">
                   <div className="inline-block px-4 py-1.5 rounded-full bg-asili-honey/10 border border-asili-honey/20 text-asili-honey text-[10px] font-bold uppercase tracking-widest">Tech as a Trust Provider</div>
-                  <h3 className="text-4xl lg:text-5xl font-bold leading-tight">Eliminating the <br /><span className="text-asili-honey italic">"Is This Real?"</span> Doubt</h3>
+                  <h3 className="text-2xl sm:text-4xl lg:text-5xl font-bold leading-tight">Eliminating the <br /><span className="text-asili-honey italic">"Is This Real?"</span> Doubt</h3>
                   <p className="text-lg text-white/60 leading-relaxed">
                     Most brands put a "100% Pure" sticker on a jar. We give you a window into the harvest. In a market where trust is the scarcest resource, Asili uses high-yield biology and transparency tech to create an unbreakable bond between the worker bee and the wellness shopper.
                   </p>
@@ -614,7 +903,7 @@ export default function App() {
               <FadeIn>
                 <div className="text-center mb-20">
                   <span className="text-asili-honey font-bold uppercase tracking-widest text-xs mb-4 block underline decoration-asili-honey/20 underline-offset-8">Our Vision & Mission</span>
-                  <h2 className="text-5xl lg:text-7xl font-bold text-asili-green uppercase tracking-tighter mb-8 leading-[0.9]">The Quest for <br /><span className="italic font-serif text-asili-honey">Origin.</span></h2>
+                  <h2 className="text-3xl sm:text-5xl lg:text-7xl font-bold text-asili-green uppercase tracking-tighter mb-8 leading-[0.9]">The Quest for <br /><span className="italic font-serif text-asili-honey">Origin.</span></h2>
                   <p className="text-xl text-asili-green/60 max-w-3xl mx-auto leading-relaxed">
                     "Asili" is Kiswahili for origin, essence, and core. We believe that true wellness isn't found in a laboratory, but in the untainted integrity of nature's first principles.
                   </p>
@@ -656,7 +945,7 @@ export default function App() {
             <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
               <FadeIn>
                 <div className="space-y-8">
-                  <h2 className="text-5xl md:text-6xl font-bold text-asili-green leading-tight">Beyond <br /><span className="text-asili-honey italic font-serif">Purity</span></h2>
+                  <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold text-asili-green leading-tight">Beyond <br /><span className="text-asili-honey italic font-serif">Purity</span></h2>
                   <div className="space-y-6 text-lg text-asili-green/70 leading-relaxed font-light">
                     <p>In a market where "purity" is a cliché, Asili defines a new standard through RADICAL TRACEABILITY. We don't just put a sticker on a jar; we provide a link to the life of the hive.</p>
                     <p>Our Hub-and-Spoke model scale impact by providing tech and high-yield 'Obadoni' protocols to local farmers in Makueni, buying back their gold and ensuring KeBS-certified integrity.</p>
@@ -681,12 +970,7 @@ export default function App() {
               </FadeIn>
               <div className="relative group">
                 <div className="absolute -inset-4 bg-asili-honey/10 rounded-[4rem] rotate-3 scale-95 group-hover:rotate-0 transition-transform duration-700"></div>
-                <img 
-                  src="https://images.unsplash.com/photo-1580915411954-282cb1b0d780?q=80&w=2070&auto=format&fit=crop" 
-                  alt="Asili Honey Farming in Makueni" 
-                  className="relative z-10 w-full rounded-[3.5rem] shadow-2xl h-[400px] lg:h-[600px] object-cover" 
-                  referrerPolicy="no-referrer" 
-                />
+                <HeritageIllustration />
               </div>
             </div>
           </Section>
@@ -697,7 +981,7 @@ export default function App() {
               <div className="text-center mb-16">
                 <FadeIn>
                   <span className="text-asili-honey font-bold uppercase tracking-widest mb-4 block">Visionary Portfolio</span>
-                  <h2 className="text-6xl font-bold mb-6 text-asili-green uppercase">The Asili Ecosystem</h2>
+                  <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-6 text-asili-green uppercase break-words">The Asili Ecosystem</h2>
                   <p className="text-asili-green/60 max-w-2xl mx-auto text-xl">From superfoods to future tech—explore how we are building a sustainable future.</p>
                 </FadeIn>
               </div>
@@ -710,7 +994,7 @@ export default function App() {
               <div className="text-center mb-20">
                 <FadeIn>
                   <span className="text-asili-honey font-bold uppercase tracking-widest text-xs mb-4 block">A New Business Model</span>
-                  <h2 className="text-5xl lg:text-6xl font-bold mb-6 text-asili-green uppercase tracking-tighter">Bee-as-a-Service (BaaS)</h2>
+                  <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-6 text-asili-green uppercase tracking-tighter">Bee-as-a-Service (BaaS)</h2>
                   <p className="text-asili-green/60 max-w-2xl mx-auto text-xl italic">"Predictable cash flow meeting radical direct impact."</p>
                 </FadeIn>
               </div>
@@ -878,7 +1162,7 @@ export default function App() {
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-asili-honey/10 blur-[150px] -mr-64 -mt-64 rounded-full"></div>
             <div className="grid lg:grid-cols-2 gap-20 items-center relative z-10">
               <FadeIn>
-                <h2 className="text-6xl font-bold mb-10 leading-tight">Strategic <br /><span className="text-asili-honey">Roadmap</span></h2>
+                <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-10 leading-tight">Strategic <br /><span className="text-asili-honey">Roadmap</span></h2>
                 <div className="space-y-8">
                   <div className="flex gap-6 items-start">
                     <div className="text-4xl font-serif text-asili-honey">01</div>
@@ -936,12 +1220,7 @@ export default function App() {
           {/* Honey Hero */}
           <section className="relative h-screen flex items-center justify-center overflow-hidden pt-16">
             <div className="absolute inset-0 z-0">
-              <img 
-                src="https://images.unsplash.com/photo-1587049352846-4a222e784d38?q=80&w=2070&auto=format&fit=crop" 
-                alt="Honey Essence" 
-                className="w-full h-full object-cover opacity-30 contrast-125 brightness-50"
-                referrerPolicy="no-referrer"
-              />
+              <LuxuryHeroIllustration />
               <div className="absolute inset-0 bg-gradient-to-b from-asili-black via-transparent to-asili-black"></div>
             </div>
 
@@ -954,7 +1233,7 @@ export default function App() {
                 <div className="inline-block px-4 py-1 rounded-full border border-asili-gold/30 bg-asili-gold/5 mb-8 backdrop-blur-sm">
                   <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-asili-gold">The Purest Gold Range</span>
                 </div>
-                <h1 className="text-5xl md:text-8xl lg:text-[10rem] font-bold mb-10 leading-[1] md:leading-[0.85] gold-gradient title-spacing hero-text-shadow-gold text-center">
+                <h1 className="text-4xl sm:text-8xl lg:text-[10rem] font-bold mb-10 leading-[1] md:leading-[0.85] gold-gradient title-spacing hero-text-shadow-gold text-center">
                   Glass <br />
                   <span className="italic font-serif text-asili-cream brightness-110 uppercase tracking-tighter">Hive™</span>
                 </h1>
@@ -997,7 +1276,7 @@ export default function App() {
                 <div className="space-y-8">
                   <div>
                     <span className="text-asili-gold font-mono text-xs uppercase tracking-[0.3em] mb-4 block underline decoration-asili-gold/30 underline-offset-8">Our Vision</span>
-                    <h2 className="text-5xl font-bold gold-gradient leading-tight">From Sugar Scares to <br /><span className="text-asili-cream font-serif italic">Radical Trust.</span></h2>
+                    <h2 className="text-3xl sm:text-5xl font-bold gold-gradient leading-tight">From Sugar Scares to <br /><span className="text-asili-cream font-serif italic">Radical Trust.</span></h2>
                   </div>
                   <p className="text-xl text-asili-cream/70 leading-relaxed font-light">
                     In a market flooded with sugar-syrup and "cliché purity," Asili exists to prove that high-integrity honey isn't just a product—it's a technological commitment. 
@@ -1019,12 +1298,7 @@ export default function App() {
               </FadeIn>
               <div className="relative group">
                 <div className="absolute -inset-4 bg-asili-gold/10 rounded-[3rem] blur-2xl group-hover:bg-asili-gold/20 transition-all"></div>
-                <img 
-                  src="https://images.unsplash.com/photo-1558508962-2d506d2ab964?q=80&w=2070&auto=format&fit=crop" 
-                  alt="Bee Farming Research" 
-                  className="relative z-10 w-full rounded-[3.5rem] border border-asili-gold/20 h-[500px] object-cover contrast-110 grayscale-[30%]"
-                  referrerPolicy="no-referrer"
-                />
+                <ResearchIllustration />
               </div>
             </div>
           </Section>
@@ -1051,7 +1325,7 @@ export default function App() {
               </FadeIn>
               <FadeIn className="order-1 lg:order-2">
                 <div className="space-y-8">
-                  <h2 className="text-5xl font-bold leading-tight gold-gradient italic">The Standards of <br />The Glass Hive™</h2>
+                  <h2 className="text-3xl sm:text-5xl font-bold leading-tight gold-gradient italic">The Standards of <br />The Glass Hive™</h2>
                   <p className="text-xl text-asili-cream/70 font-light leading-relaxed">
                     "We don't sell honey; we sell the proof of its purity."
                   </p>
@@ -1092,7 +1366,7 @@ export default function App() {
           <Section id="maturity" className="bg-asili-black">
             <div className="grid md:grid-cols-2 gap-20 items-center">
               <FadeIn>
-                <h2 className="text-5xl font-bold mb-8 gold-gradient">Scientific Purity. <br />Nature's Patience.</h2>
+                <h2 className="text-3xl sm:text-5xl font-bold mb-8 gold-gradient">Scientific Purity. <br />Nature's Patience.</h2>
                 <div className="space-y-8">
                   <div>
                     <h4 className="text-asili-gold font-bold text-xl mb-2 flex items-center gap-2">
@@ -1169,13 +1443,8 @@ export default function App() {
               <FadeIn>
                 <div className="relative group">
                   <div className="absolute -inset-10 bg-asili-gold/10 blur-[120px] rounded-full opacity-30"></div>
-                  <img 
-                    src="https://images.unsplash.com/photo-1473973266408-ed4e27fca232?q=80&w=2070&auto=format&fit=crop" 
-                    alt="Aesthetic Honey Jars" 
-                    className="relative z-10 w-full rounded-[4rem] h-[600px] object-cover contrast-125 brightness-75 border border-white/5"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="absolute bottom-10 left-10 right-10 bg-asili-dark/80 backdrop-blur-xl p-8 rounded-3xl border border-white/10">
+                  <AlchemyIllustration />
+                  <div className="absolute bottom-10 left-10 right-10 bg-asili-dark/80 backdrop-blur-xl p-8 rounded-3xl border border-white/10 z-20">
                     <p className="text-asili-gold font-bold mb-2">Asili Flow Shot™</p>
                     <p className="text-xs text-white/50 leading-relaxed font-light">The future of performance fuel. Makueni gold infused with MCT oil and caffeine for sustained mental focus.</p>
                   </div>
@@ -1185,7 +1454,7 @@ export default function App() {
               <FadeIn delay={0.2}>
                 <div className="space-y-10">
                   <span className="text-asili-gold font-mono text-xs uppercase tracking-widest block">Beyond Nutrition</span>
-                  <h2 className="text-6xl font-bold leading-tight gold-gradient italic">Functional <br />Alchemy</h2>
+                  <h2 className="text-3xl sm:text-6xl font-bold leading-tight gold-gradient italic">Functional <br />Alchemy</h2>
                   <p className="text-xl text-asili-cream/70 font-light leading-relaxed">
                     We've shifted from being a honey seller to a "Functional Food" provider. Asili honey isn't just a sweetener—it's a performance fuel and a clinical healer.
                   </p>
@@ -1210,7 +1479,7 @@ export default function App() {
               <div className="text-center mb-16">
                 <FadeIn>
                   <span className="text-asili-gold font-mono text-sm tracking-widest uppercase mb-4 block underline decoration-asili-gold/40 underline-offset-8">The Gold Collection</span>
-                  <h2 className="text-5xl md:text-6xl font-bold mb-4 gold-gradient italic">Crafted with Intent</h2>
+                  <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 gold-gradient italic text-center">Crafted with Intent</h2>
                   <p className="text-asili-cream/60 max-w-2xl mx-auto text-lg font-light">From clinical tinctures to artisanal infusions, explore the full depth of the Asili hive.</p>
                 </FadeIn>
               </div>
@@ -1224,7 +1493,7 @@ export default function App() {
             <div className="max-w-6xl mx-auto relative z-10">
               <div className="text-center mb-20">
                 <FadeIn>
-                  <h2 className="text-5xl font-bold mb-4 gold-gradient">Farm-to-Jar DNA</h2>
+                  <h2 className="text-3xl sm:text-5xl font-bold mb-4 gold-gradient">Farm-to-Jar DNA</h2>
                   <p className="text-asili-cream/60">Total transparency from the Makueni plains to your ritual.</p>
                 </FadeIn>
               </div>
