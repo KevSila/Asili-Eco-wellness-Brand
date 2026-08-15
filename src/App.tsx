@@ -35,6 +35,14 @@ const whatsappUrl = (message: string) =>
 
 type Theme = "nature" | "luxury";
 type FormStatus = "idle" | "submitting" | "success" | "error";
+type FlowMotifTone = "light" | "green" | "dark";
+type FlowMotifSide = "left" | "right";
+
+interface FlowMotifConfig {
+  tone: FlowMotifTone;
+  side?: FlowMotifSide;
+  quiet?: boolean;
+}
 
 interface FadeInProps {
   children: React.ReactNode;
@@ -55,17 +63,69 @@ const FadeIn = ({ children, className, delay = 0 }: FadeInProps) => (
   </motion.div>
 );
 
+const FLOW_LINES = Array.from({ length: 15 }, (_, index) => index);
+
+const FlowMotif = ({ tone, side = "right", quiet = false }: FlowMotifConfig) => {
+  const palette = {
+    light: { primary: "#1a3a1e", accent: "#c5a059" },
+    green: { primary: "#ead8a9", accent: "#c5a059" },
+    dark: { primary: "#d4af37", accent: "#4f754d" },
+  }[tone];
+
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(
+        "flow-motif",
+        `flow-motif--${side}`,
+        `flow-motif--${tone}`,
+        quiet && "flow-motif--quiet",
+      )}
+    >
+      <svg className="flow-motif__art" viewBox="0 0 560 1000" preserveAspectRatio="none">
+        <g fill="none" strokeLinecap="round">
+          {FLOW_LINES.map((index) => (
+            <path
+              key={`flow-${index}`}
+              d="M 640 -120 C 260 28 650 176 412 320 C 176 462 654 590 360 742 C 166 846 514 1018 220 1120"
+              stroke={index % 4 === 0 ? palette.accent : palette.primary}
+              strokeOpacity={0.42 + (index % 3) * 0.08}
+              strokeWidth={index % 4 === 0 ? 1.35 : 0.9}
+              vectorEffect="non-scaling-stroke"
+              transform={`translate(${-index * 15} ${index * 4})`}
+            />
+          ))}
+          {FLOW_LINES.slice(0, 8).map((index) => (
+            <path
+              key={`echo-${index}`}
+              d="M 710 160 C 430 266 704 386 522 510 C 348 630 686 752 474 900"
+              stroke={index % 3 === 0 ? palette.primary : palette.accent}
+              strokeOpacity={0.28 + (index % 2) * 0.09}
+              strokeWidth="0.8"
+              vectorEffect="non-scaling-stroke"
+              transform={`translate(${-index * 18} ${index * 6})`}
+            />
+          ))}
+        </g>
+      </svg>
+    </div>
+  );
+};
+
 const Section = ({
   children,
   className,
   id,
+  motif,
 }: {
   children: React.ReactNode;
   className?: string;
   id?: string;
+  motif?: FlowMotifConfig;
 }) => (
-  <section id={id} className={cn("scroll-mt-24 px-6 py-20 md:px-12 lg:px-24 lg:py-28", className)}>
-    <div className="mx-auto max-w-7xl">{children}</div>
+  <section id={id} className={cn("relative isolate scroll-mt-24 overflow-hidden px-6 py-20 md:px-12 lg:px-24 lg:py-28", className)}>
+    {motif && <FlowMotif {...motif} />}
+    <div className="relative z-10 mx-auto max-w-7xl">{children}</div>
   </section>
 );
 
@@ -456,9 +516,10 @@ const HomePage = () => {
     <>
       <Header theme="nature" page="home" />
       <main id="main-content">
-        <section className="relative overflow-hidden px-6 pb-20 pt-32 md:px-12 lg:min-h-screen lg:px-24 lg:pb-24 lg:pt-36">
-          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_34%,rgba(197,160,89,0.16),transparent_34%),radial-gradient(circle_at_15%_15%,rgba(45,90,39,0.08),transparent_30%)]" />
-          <div className="mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
+        <section className="relative isolate overflow-hidden px-6 pb-20 pt-32 md:px-12 lg:min-h-screen lg:px-24 lg:pb-24 lg:pt-36">
+          <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_78%_34%,rgba(197,160,89,0.16),transparent_34%),radial-gradient(circle_at_15%_15%,rgba(45,90,39,0.08),transparent_30%)]" />
+          <FlowMotif tone="light" side="right" />
+          <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
             <div>
               <FadeIn>
                 <div className="mb-6 flex items-center gap-3 text-asili-earth">
@@ -561,7 +622,7 @@ const HomePage = () => {
           </div>
         </Section>
 
-        <Section id="story">
+        <Section id="story" motif={{ tone: "light", side: "left", quiet: true }}>
           <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
             <FadeIn>
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">The story behind Asili</span>
@@ -621,7 +682,7 @@ const HomePage = () => {
           </div>
         </Section>
 
-        <Section id="why-asili" className="bg-asili-green text-white">
+        <Section id="why-asili" className="bg-asili-green text-white" motif={{ tone: "green", side: "right" }}>
           <FadeIn className="mx-auto max-w-3xl text-center">
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-honey">The Asili standard</span>
             <h2 className="mt-5 text-4xl font-bold sm:text-6xl">Quality, origin and impact belong together.</h2>
@@ -691,7 +752,7 @@ const HomePage = () => {
           </FadeIn>
         </Section>
 
-        <Section id="partners">
+        <Section id="partners" motif={{ tone: "light", side: "right", quiet: true }}>
           <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
             <FadeIn>
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">For buyers, retailers & partners</span>
@@ -785,9 +846,10 @@ const HoneyPage = () => (
   <>
     <Header theme="luxury" page="honey" />
     <main id="main-content" className="bg-asili-black text-asili-cream">
-      <section className="relative overflow-hidden px-6 pb-20 pt-32 md:px-12 lg:min-h-screen lg:px-24 lg:pb-24 lg:pt-36">
+      <section className="relative isolate overflow-hidden px-6 pb-20 pt-32 md:px-12 lg:min-h-screen lg:px-24 lg:pb-24 lg:pt-36">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_35%,rgba(212,175,55,0.13),transparent_35%),linear-gradient(to_bottom,#0a0a0a,#10100e)]" />
-        <div className="relative mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
+        <FlowMotif tone="dark" side="right" />
+        <div className="relative z-10 mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
           <FadeIn>
             <div className="mb-6 flex items-center gap-3 text-asili-gold">
               <span className="h-px w-10 bg-asili-gold" />
@@ -849,7 +911,7 @@ const HoneyPage = () => (
         </div>
       </Section>
 
-      <Section id="origin">
+      <Section id="origin" motif={{ tone: "dark", side: "left", quiet: true }}>
         <FadeIn className="mx-auto max-w-3xl text-center">
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-gold">From source to jar</span>
           <h2 className="mt-5 text-4xl font-bold sm:text-6xl">Origin should be more than a word on a label.</h2>
@@ -873,7 +935,7 @@ const HoneyPage = () => (
         </div>
       </Section>
 
-      <Section id="traceability" className="bg-[#eee4d2] text-asili-green">
+      <Section id="traceability" className="bg-[#eee4d2] text-asili-green" motif={{ tone: "light", side: "right", quiet: true }}>
         <FadeIn>
           <TraceabilityCard />
         </FadeIn>
@@ -884,7 +946,7 @@ const HoneyPage = () => (
         </FadeIn>
       </Section>
 
-      <Section id="ecosystem" className="bg-[#f8f1e4] text-asili-green">
+      <Section id="ecosystem" className="bg-[#f8f1e4] text-asili-green" motif={{ tone: "light", side: "left" }}>
         <div className="grid gap-10 lg:grid-cols-[0.75fr_1.25fr] lg:gap-16">
           <FadeIn>
             <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">The Asili ecosystem</span>
@@ -977,7 +1039,7 @@ const HoneyPage = () => (
         </FadeIn>
       </Section>
 
-      <Section id="ways-to-enjoy">
+      <Section id="ways-to-enjoy" motif={{ tone: "dark", side: "right", quiet: true }}>
         <div className="grid items-center gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
           <FadeIn>
             <div className="premium-card relative overflow-hidden rounded-[3rem] border border-asili-gold/15 bg-[radial-gradient(circle_at_25%_20%,rgba(212,175,55,0.16),transparent_35%),#141414] p-9 sm:p-12">

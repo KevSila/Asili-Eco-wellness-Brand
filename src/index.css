@@ -111,6 +111,59 @@
   background: radial-gradient(ellipse, rgba(212, 175, 55, 0.18), transparent 68%);
 }
 
+.flow-motif {
+  bottom: -10%;
+  height: 120%;
+  pointer-events: none;
+  position: absolute;
+  top: -10%;
+  width: min(46rem, 50vw);
+  z-index: 1;
+}
+
+.flow-motif--right {
+  right: -10rem;
+  -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.94) 52%, transparent 100%);
+  mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.94) 52%, transparent 100%);
+}
+
+.flow-motif--left {
+  left: -10rem;
+  transform: scaleX(-1);
+  -webkit-mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.94) 52%, transparent 100%);
+  mask-image: linear-gradient(to left, #000 0%, rgba(0, 0, 0, 0.94) 52%, transparent 100%);
+}
+
+.flow-motif--light {
+  opacity: 0.16;
+}
+
+.flow-motif--green,
+.flow-motif--dark {
+  opacity: 0.21;
+}
+
+.flow-motif--quiet {
+  opacity: 0.11;
+  width: min(40rem, 43vw);
+}
+
+.flow-motif__art {
+  animation: flow-motif-drift 44s ease-in-out infinite alternate;
+  height: 100%;
+  transform-origin: 50% 50%;
+  width: 100%;
+}
+
+@keyframes flow-motif-drift {
+  0% {
+    transform: translate3d(0, -4px, 0) rotate(-0.2deg) scale(1.01);
+  }
+  100% {
+    transform: translate3d(-12px, 10px, 0) rotate(0.35deg) scale(1.025);
+  }
+}
+
 .asili-select-light,
 .asili-select-luxury {
   color-scheme: light;
@@ -154,6 +207,35 @@ details[open] p {
 
 .skip-link:focus {
   transform: translateY(0);
+}
+
+@media (max-width: 767px) {
+  .flow-motif {
+    bottom: -6%;
+    height: 112%;
+    opacity: 0.11;
+    right: -64vw;
+    top: -6%;
+    width: 118vw;
+  }
+
+  .flow-motif--left {
+    left: -64vw;
+    right: auto;
+  }
+
+  .flow-motif--green,
+  .flow-motif--dark {
+    opacity: 0.15;
+  }
+
+  .flow-motif--quiet {
+    opacity: 0.08;
+  }
+
+  .flow-motif__art {
+    animation: none;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
