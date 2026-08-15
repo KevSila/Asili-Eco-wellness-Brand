@@ -304,7 +304,7 @@ const Header = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => {
 };
 
 const HoneyJarIllustration = ({ dark = false }: { dark?: boolean }) => (
-  <div className={cn("product-stage relative mx-auto min-h-[500px] w-full max-w-[560px]", dark && "product-stage-dark")}>
+  <div className={cn("product-stage relative mx-auto min-h-[550px] w-full max-w-[560px] sm:min-h-[500px]", dark && "product-stage-dark")}>
     <motion.div
       animate={{ rotate: [0, 2, 0, -2, 0] }}
       transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
@@ -341,28 +341,30 @@ const HoneyJarIllustration = ({ dark = false }: { dark?: boolean }) => (
         aria-hidden="true"
       />
     ))}
-    <div
-      className={cn(
-        "absolute bottom-[8%] left-[5%] rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-md",
-        dark
-          ? "border-asili-gold/20 bg-asili-black/80 text-asili-gold"
-          : "border-asili-honey/20 bg-white/80 text-asili-green",
-      )}
-    >
-      <span className="block text-[8px] font-bold uppercase tracking-[0.25em] opacity-60">Origin</span>
-      <span className="mt-1 flex items-center gap-1.5 text-xs font-bold">
-        <MapPin className="h-3.5 w-3.5" /> Makueni, Kenya
-      </span>
-    </div>
-    <div
-      className={cn(
-        "absolute right-[2%] top-[14%] z-20 rounded-full border px-4 py-2 text-[8px] font-black uppercase tracking-[0.18em] shadow-lg backdrop-blur-md",
-        dark
-          ? "border-asili-gold/25 bg-asili-black/80 text-asili-gold"
-          : "border-asili-honey/25 bg-white/80 text-asili-green",
-      )}
-    >
-      Raw · Unheated
+    <div className="relative z-20 mt-1 grid grid-cols-[minmax(0,1fr)_auto] items-end gap-2 px-1 sm:contents">
+      <div
+        className={cn(
+          "min-w-0 rounded-2xl border px-3 py-3 shadow-xl backdrop-blur-md sm:absolute sm:bottom-[8%] sm:left-[5%] sm:px-4",
+          dark
+            ? "border-asili-gold/20 bg-asili-black/80 text-asili-gold"
+            : "border-asili-honey/20 bg-white/80 text-asili-green",
+        )}
+      >
+        <span className="block text-[8px] font-bold uppercase tracking-[0.25em] opacity-60">Origin</span>
+        <span className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-xs font-bold">
+          <MapPin className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> Makueni, Kenya
+        </span>
+      </div>
+      <div
+        className={cn(
+          "justify-self-end whitespace-nowrap rounded-full border px-3 py-2 text-[8px] font-black uppercase tracking-[0.18em] shadow-lg backdrop-blur-md sm:absolute sm:right-[2%] sm:top-[14%] sm:px-4",
+          dark
+            ? "border-asili-gold/25 bg-asili-black/80 text-asili-gold"
+            : "border-asili-honey/25 bg-white/80 text-asili-green",
+        )}
+      >
+        Raw · Unheated
+      </div>
     </div>
   </div>
 );
@@ -383,11 +385,11 @@ const TraceabilityCard = ({ compact = false }: { compact?: boolean }) => {
           <div>
             <div className="mb-3 flex items-center gap-2 text-asili-gold">
               <span className="h-2 w-2 rounded-full bg-asili-gold" />
-              <span className="text-[9px] font-black uppercase tracking-[0.35em]">Glass Hive · In development</span>
+              <span className="text-[9px] font-black uppercase tracking-[0.35em]">Glass Hive · Batch passport</span>
             </div>
             <h3 className="text-3xl font-bold sm:text-4xl">The Glass Hive</h3>
             <p className="mt-2 max-w-xl text-sm leading-relaxed text-asili-cream/65">
-              Asili’s evolving batch-passport system is designed to connect eligible jars with reviewed source, handling and quality information through a simple digital record.
+              Glass Hive is Asili’s digital batch-passport system. It connects eligible jars with captured and reviewed source, handling and quality information through a clear digital record.
             </p>
           </div>
           <div className="w-fit rounded-xl border border-asili-gold/20 bg-asili-gold/10 px-4 py-2 font-mono">
@@ -408,7 +410,7 @@ const TraceabilityCard = ({ compact = false }: { compact?: boolean }) => {
 
         <div className="mt-7 flex flex-col justify-between gap-4 border-t border-white/8 pt-6 sm:flex-row sm:items-center">
           <p className="max-w-2xl text-xs leading-relaxed text-asili-cream/50">
-            Demo only. Actual records will vary by batch and will only display information that has been captured and reviewed.
+            This is an example record. A live passport displays the information captured and reviewed for its specific batch.
           </p>
           <a
             href="/b/SAMPLE-2604-01.html"
@@ -596,7 +598,7 @@ const HomePage = () => {
                 Raw honey, kept <span className="italic text-asili-honey">close to nature.</span>
               </h2>
               <p className="mt-6 max-w-2xl text-base leading-relaxed text-asili-green/65">
-                We do not heat-treat Asili honey. Each available batch is offered with clear purchasing information and, as Glass Hive develops, more visible source and quality records. Current jar sizes, retail and bulk prices are confirmed per batch.
+                We do not heat-treat Asili honey. Each available batch is offered with clear purchasing information, and Glass Hive makes captured source and quality records visible for eligible jars. Current jar sizes, retail and bulk prices are confirmed per batch.
               </p>
               <div className="mt-7 grid gap-3 sm:grid-cols-3">
                 {["Batch-based availability", "Bulk enquiries welcome", "Delivery at customer cost"].map((item) => (
@@ -692,7 +694,7 @@ const HomePage = () => {
               {
                 icon: <MapPin aria-hidden="true" />,
                 title: "Origin made visible",
-                text: "We name Makueni and are developing the Glass Hive to make reviewed source and batch information easier to follow.",
+                text: "We name Makueni and use Glass Hive to make reviewed source and batch information easier to follow.",
               },
               {
                 icon: <ShieldCheck aria-hidden="true" />,
@@ -724,14 +726,14 @@ const HomePage = () => {
               <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">From Makueni to your table</span>
               <h2 className="mt-5 text-4xl font-bold leading-tight text-asili-green sm:text-5xl">A clearer journey for every jar.</h2>
               <p className="mt-5 leading-relaxed text-asili-green/65">
-                This is the process Asili is building around its honey. As the system develops, eligible batches can carry more of this information directly to the customer.
+                This is the process Asili uses around its honey. Eligible batches carry captured and reviewed information directly to the customer through Glass Hive.
               </p>
             </FadeIn>
             <div className="grid gap-4 sm:grid-cols-2">
               {[
                 ["01", "Source", "Honey is sourced from the Makueni ecosystem through producer relationships."],
                 ["02", "Handle", "Each batch is received and handled with a consistent quality process."],
-                ["03", "Record", "Origin and quality details are captured as the batch-passport system rolls out."],
+                ["03", "Record", "Origin and quality details are captured in the Glass Hive batch-passport record."],
                 ["04", "Share", "Customers can ask questions, view available records and order directly."],
               ].map(([number, title, text], index) => (
                 <FadeIn key={number} delay={index * 0.06}>
@@ -800,7 +802,7 @@ const HomePage = () => {
                 ["Is Asili honey raw and unheated?", "Yes. The honey is not heat-treated. Colour, texture and the speed of natural crystallisation can vary from one batch to another."],
                 ["Where does the honey come from?", "Our current honey story is rooted in Makueni, Kenya. Ask us about the specific availability and source information attached to the jar you want to order."],
                 ["How do I buy it?", "Use any ‘Buy honey’ button to open WhatsApp. We will confirm current jar sizes, batch price, availability and payment details. Delivery can be facilitated at the customer’s expense."],
-                ["Is the batch passport already live for every jar?", "Not yet. The Glass Hive is being rolled out, so the website clearly labels demo records. Eligible jars will link to real batch information as it becomes available."],
+                ["How does the Glass Hive batch passport work?", "Glass Hive connects an eligible jar with a digital batch record. Open the passport to view captured and reviewed information such as source, handling notes, batch reference and available quality checks."],
               ].map(([question, answer]) => (
                 <details key={question} className="group py-5">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-asili-green">
@@ -916,7 +918,7 @@ const HoneyPage = () => (
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-gold">From source to jar</span>
           <h2 className="mt-5 text-4xl font-bold sm:text-6xl">Origin should be more than a word on a label.</h2>
           <p className="mt-5 text-sm leading-relaxed text-asili-cream/55 sm:text-base">
-            Asili is developing consistent source, handling and batch-reference habits so customers can understand the honey they are buying—not just the brand selling it.
+            Asili records source, handling and batch references so customers can understand the honey they are buying—not just the brand selling it.
           </p>
         </FadeIn>
         <div className="mt-14 grid gap-px overflow-hidden rounded-[2.5rem] border border-asili-gold/10 bg-asili-gold/10 md:grid-cols-4">
@@ -941,7 +943,7 @@ const HoneyPage = () => (
         </FadeIn>
         <FadeIn className="mx-auto mt-8 max-w-4xl text-center">
           <p className="text-sm leading-relaxed text-asili-green/60">
-            Glass Hive is a traceability system in development—not a claim that every jar already carries a full digital passport. The sample shows the type of reviewed information eligible batches may display as records become available.
+            Glass Hive is Asili’s digital batch-passport system. It connects an eligible jar to captured and reviewed information about its source, handling and quality checks, so customers can understand the honey beyond the label.
           </p>
         </FadeIn>
       </Section>

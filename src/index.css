@@ -99,12 +99,14 @@
 
 .product-stage::after {
   background: radial-gradient(ellipse, rgba(87, 53, 6, 0.22), transparent 68%);
-  bottom: 2rem;
+  bottom: 4.5rem;
   content: "";
   height: 3rem;
   left: 20%;
+  pointer-events: none;
   position: absolute;
   width: 60%;
+  z-index: 0;
 }
 
 .product-stage-dark::after {
@@ -235,6 +237,12 @@ details[open] p {
 
   .flow-motif__art {
     animation: none;
+  }
+}
+
+@media (min-width: 640px) {
+  .product-stage::after {
+    bottom: 2rem;
   }
 }
 
