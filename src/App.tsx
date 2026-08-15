@@ -3,1709 +3,988 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef, useState, useEffect } from "react";
-import { motion, useScroll, AnimatePresence } from "motion/react";
-import { 
-  Leaf, 
-  Droplets, 
-  Users, 
-  Globe, 
-  TrendingUp, 
-  Award, 
-  ArrowRight, 
-  Sprout, 
-  Zap,
-  ChevronRight,
-  Mail,
-  Instagram,
-  Facebook,
-  Twitter,
-  Package,
-  Shirt,
-  Home,
+import React, { useEffect, useState } from "react";
+import { motion } from "motion/react";
+import {
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Droplets,
+  Globe,
   Heart,
-  Rocket,
-  Search,
+  Instagram,
+  Leaf,
+  Mail,
+  MapPin,
   Menu,
-  X
+  Package,
+  ScanLine,
+  ShieldCheck,
+  Sparkles,
+  Sprout,
+  Store,
+  Users,
+  X,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 
-const BRAND_CATALOGUE = [
-  {
-    id: "wellness",
-    title: "Agro-Processing",
-    icon: <Leaf className="w-5 h-5" />,
-    description: "Transforming indigenous resources into world-class health products.",
-    items: [
-      { name: "Asili Flow Shots", desc: "Honey + MCT Oil + Caffeine. Performance fuel for athletes.", price: "Performance" },
-      { name: "Moringa Superfood", desc: "Cold-pressed oils and nutrient-dense leaf powders.", price: "Essential" },
-      { name: "Baobab Essence", desc: "Vitamin C rich fruit pulp and revitalizing seed oils.", price: "Luxury" },
-      { name: "Bee-Venom Skincare", desc: "Natural 'Botox' serum using ethically harvested venom.", price: "Beauty" }
-    ]
-  },
-  {
-    id: "packaging",
-    title: "Eco-Packaging",
-    icon: <Package className="w-5 h-5" />,
-    description: "Eliminating plastic through nature-inspired containment solutions.",
-    items: [
-      { name: "Beeswax Wraps", desc: "Reusable, antibacterial food storage made from local wax.", price: "Eco-Friendly" },
-      { name: "Mycelium Boxes", desc: "Mushroom-based biodegradable shipping containers.", price: "Innovation" },
-      { name: "Bamboo Containers", desc: "Durable, compostable jars for wellness products.", price: "Sustainable" }
-    ]
-  },
-  {
-    id: "home",
-    title: "Sustainable Home",
-    icon: <Home className="w-5 h-5" />,
-    description: "Bringing the essence of nature into your living space.",
-    items: [
-      { name: "Natural Cleaners", desc: "Plant-based, non-toxic household solutions.", price: "Pure" },
-      { name: "Bamboo Utensils", desc: "Hand-carved kitchenware from sustainable groves.", price: "Crafted" },
-      { name: "Beeswax Candles", desc: "Pure, clean-burning candles with natural scents.", price: "Atmospheric" }
-    ]
-  },
-  {
-    id: "tech",
-    title: "Agri-Tech Hub",
-    icon: <Rocket className="w-5 h-5" />,
-    description: "Scaling trust through verifiable batch data and 120-day seasonal weather profiling.",
-    items: [
-      { name: "Glass Hive™ Lab", desc: "Batch Passport system linking jars to historical season data.", price: "Verification" },
-      { name: "Terroir Mapping", desc: "Historical weather mapping for optimal drought-resistant honey.", price: "Precision" },
-      { name: "Audit Trail", desc: "Digital records of KeBS compliance and refractometer readings.", price: "Integrity" }
-    ]
-  }
-];
+const WHATSAPP_NUMBER = "254717578394";
+const WHATSAPP_BASE = `https://wa.me/${WHATSAPP_NUMBER}`;
 
-const HONEY_CATALOGUE = [
-  {
-    id: "gold",
-    title: "The Gold Collection",
-    icon: <Award className="w-5 h-5" />,
-    description: "Our flagship single-origin honeys, verified by KeBS with a Digital Certificate of Analysis.",
-    items: [
-      { name: "Single-Origin Makueni", desc: "Acacia nectar. KeBS Certified. Refractometer moisture < 18%.", price: "Premium" },
-      { name: "The Glass Hive Passport", desc: "Batch-specific honey. Scan QR for the history of your harvest.", price: "Ultra-Premium" },
-      { name: "Propolis Tincture", desc: "70% concentrated propolis extract. Nature's strongest antibiotic.", price: "Clinical" },
-      { name: "Royal Jelly Essence", desc: "Freshly harvested cold-stored essence. The queen's fuel.", price: "Luxury" }
-    ]
-  },
-  {
-    id: "baas",
-    title: "Bee-as-a-Service",
-    icon: <Users className="w-5 h-5" />,
-    description: "A hybrid subscription model creating predictable cash flow and direct social impact.",
-    items: [
-      { name: "Adopt-a-Hive (B2C)", desc: "Rent a hive in Makueni. Get 10kg/yr of your Private Reserve.", price: "Subscription" },
-      { name: "Corporate Pollination", desc: "CSR-driven sponsorship for banks and tech companies.", price: "CSR Impact" },
-      { name: "Private Reserve", desc: "Branded honey jars for gifts. Exclusive to hive adopters.", price: "Exclusive" }
-    ]
-  },
-  {
-    id: "performance",
-    title: "Functional Performance",
-    icon: <Zap className="w-5 h-5" />,
-    description: "The future of performance fuel. Makueni gold infused with MCT oil and caffeine for sustained mental focus.",
-    items: [
-      { name: "Asili Flow Shot™", desc: "Honey + MCT Oil + Caffeine. Performance fuel for sustained mental focus.", price: "Performance" },
-      { name: "Honey Energy Gels", desc: "Raw honey and electrolyte blend for long-distance endurance.", price: "Athletics" },
-      { name: "Focus Essence", desc: "Nootropic honey blend with caffeine for cognitive brilliance.", price: "Nootropic" },
-      { name: "Recovery Nectar", desc: "Honey with magnesium and anti-inflammatory botanicals.", price: "Wellness" }
-    ]
-  },
-  {
-    id: "industrial",
-    title: "Industrial & Ecosystem",
-    icon: <Droplets className="w-5 h-5" />,
-    description: "High-value industrial supply and essential services for commercial orchards.",
-    items: [
-      { name: "Industrial Traceable", desc: "20L buckets for premium bakeries with Purity Certificates.", price: "B2B Supply" },
-      { name: "Pollination Credits", desc: "Service for citrus and mango orchards across Eastern Kenya.", price: "Service" },
-      { name: "White Labeling", desc: "Partner with Artcaffe or Java using our Quality Hub honey.", price: "Wholesale" }
-    ]
-  }
-];
+const whatsappUrl = (message: string) =>
+  `${WHATSAPP_BASE}?text=${encodeURIComponent(message)}`;
 
-const IMPACT_METRICS = [
-  { 
-    title: "The Glass Hive", 
-    subtitle: "Radical Transparency",
-    icon: <Search className="w-10 h-10" />,
-    description: "Transforming from honey sellers to trust providers. Eliminating fear of adulteration through real-time tech.",
-    metrics: ["QR Traceability", "Purity Guarantees", "Batch Live-Stream"],
-    color: "bg-[#f4f7f2] border-[#e1e8dc] text-asili-green"
-  },
-  { 
-    title: "Hub & Spoke", 
-    subtitle: "Aggregated Impact",
-    icon: <Users className="w-10 h-10" />,
-    description: "Scaling through a central Quality Hub that empowers local producers with 'Obadoni' protocols.",
-    metrics: ["10+ Local Spokes", "KeBS Hub Testing", "Income Tracking"],
-    color: "bg-[#fcf9f2] border-[#f2e7d5] text-asili-honey"
-  },
-  { 
-    title: "Funding Magnet", 
-    subtitle: "Grant-Worthy Tech",
-    icon: <TrendingUp className="w-10 h-10" />,
-    description: "Using verifiable batch data and 120-day seasonal profiling to unlock international agri-tech grants.",
-    metrics: ["USAID/KCIC Ready", "Batch Passports", "Impact Data API"],
-    color: "bg-[#f9f7f2] border-[#eceae4] text-[#8b4513]"
-  }
-];
-
-const PARTNERS_CONTENT = [
-  { 
-    title: "Individual Supporters", 
-    value: "Adopt-a-Hive", 
-    desc: "Join our 'Bee-as-a-Service' model. Rent a physical hive in Makueni, get 10kg of Private Reserve honey, and monthly digital hive health updates." 
-  },
-  { 
-    title: "Strategic Investors", 
-    value: "Equity & Growth", 
-    desc: "Scale with us as we bridge African biological wealth with global wellness tech. Inquire about our VC4A profile and debt financing opportunities." 
-  },
-  { 
-    title: "Institutional Partners", 
-    value: "Regulatory Trust", 
-    desc: "We align with KEPROBA, KCIC, and KeBS standards. Partner with us for large-scale traceable exports and climate-smart development." 
-  }
-];
-
-const GlassHiveDashboard = () => {
-  // Simulating the data structure from your Google Sheet script
-  const batchData = {
-    id: "MAK-2604-01",
-    moisture: 17.2,
-    location: "Makueni, Kenya",
-    gps: "1.7940° S, 37.6231° E",
-    kebs: "Permit #8892",
-    season: {
-      duration: "120 Days",
-      avgTemp: "28.4°C",
-      totalRain: "142mm",
-      profile: "Dry Harvest"
-    }
-  };
-
-  return (
-    <div className="bg-asili-black border border-asili-gold/20 rounded-[3.5rem] p-8 lg:p-12 overflow-hidden relative group">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-asili-gold/5 blur-[80px] -mr-32 -mt-32"></div>
-      
-      <div className="relative z-10">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-12">
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-2 h-2 rounded-full bg-asili-gold"></div>
-              <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-asili-gold">Batch Verification System</span>
-            </div>
-            <h3 className="text-3xl font-bold text-asili-cream uppercase tracking-tight">The Glass Hive™</h3>
-          </div>
-          <div className="px-4 py-2 rounded-xl bg-asili-gold/10 border border-asili-gold/20 flex flex-col items-end">
-            <span className="text-[8px] font-mono text-asili-gold/60 uppercase">Batch Passport ID</span>
-            <span className="text-sm font-mono text-asili-gold font-bold">{batchData.id}</span>
-          </div>
-        </div>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-          {[
-            { label: "Refractometer", val: `${batchData.moisture}%`, icon: <Droplets />, status: "Premium Tier" },
-            { label: "Season Profile", val: batchData.season.profile, icon: <Zap />, status: "Concentrated" },
-            { label: "KeBS Compliance", val: "Verified", icon: <Award />, status: batchData.kebs },
-            { label: "Harvest GPS", val: "Makueni", icon: <Globe />, status: "1.7940° S" }
-          ].map((item, i) => (
-            <motion.div 
-              key={i} 
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.1 }}
-              className="space-y-3"
-            >
-              <div className="flex items-center gap-2 text-asili-gold/40">
-                {React.cloneElement(item.icon as React.ReactElement, { size: 14 })}
-                <span className="text-[9px] font-bold uppercase tracking-widest">{item.label}</span>
-              </div>
-              <div className="text-2xl font-mono font-bold text-asili-cream">{item.val}</div>
-              <div className="text-[8px] uppercase tracking-tighter text-asili-gold/60">{item.status}</div>
-            </motion.div>
-          ))}
-        </div>
-
-        <div className="mt-12 pt-12 border-t border-asili-gold/10 grid lg:grid-cols-2 gap-12 items-start">
-          <div className="space-y-6">
-            <div>
-              <span className="text-[9px] font-bold uppercase tracking-widest text-asili-gold/40 block mb-2">Terroir Summary (Historical Weather Data)</span>
-              <p className="text-sm text-asili-cream/70 leading-relaxed font-light">
-                This batch was harvested following {batchData.season.duration} of development. Our analysis of {batchData.season.avgTemp} average temperatures and {batchData.season.totalRain} total rainfall indicates a low-moisture nectar profile, leading to the dense, enzymatic 17.2% refractometer reading.
-              </p>
-            </div>
-            <div className="flex gap-4">
-              <button onClick={() => window.open('/b/SAMPLE-2604-01.html', '_blank')} className="text-[10px] font-bold uppercase tracking-widest text-asili-gold border border-asili-gold/20 px-4 py-2 rounded-lg hover:bg-asili-gold/10 transition-colors">
-                View Batch COA
-              </button>
-            </div>
-          </div>
-          
-          <div className="bg-white/5 rounded-3xl p-6 border border-white/5">
-            <h4 className="text-[10px] font-bold uppercase tracking-widest text-asili-gold mb-4">Verification Ledger</h4>
-            <div className="space-y-4">
-              {[
-                { event: "Refractometer Analysis Complete", time: "12 Apr 2026", status: "Success" },
-                { event: "KeBS S-Mark Verification", time: "Annual Certification", status: "Active" },
-                { event: "Season Statistics Pulled", time: "OpenWeather History", status: "Verified" }
-              ].map((log, i) => (
-                <div key={i} className="flex justify-between items-center text-[10px]">
-                  <span className="text-asili-cream/40 font-mono tracking-tighter italic">{log.event}</span>
-                  <span className="text-asili-gold font-mono">{log.time}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 text-[8px] font-mono whitespace-nowrap text-asili-gold/10 uppercase tracking-[0.5em]">
-        <span>Verifiable Origin</span>
-        <span className="opacity-50">|</span>
-        <span>Aqueous Gold™ Standard</span>
-      </div>
-    </div>
-  );
-};
-
-const FUNDABILITY_CARDS = [
-  { title: "Climate-Smart", icon: <Globe />, desc: "Qualifies for KCIC & ARAF due to climate resilience focus." },
-  { title: "Youth Led", icon: <Users />, desc: "Fits Uwezo Fund & K-YES mandates for empowerment." },
-  { title: "Innovation", icon: <Award />, desc: "Superfood blends eligible for health-innovation grants." }
-];
-
-const CatalogueTabs = ({ data, theme = "nature" }: { data: any[], theme?: "nature" | "luxury" }) => {
-  const [activeTab, setActiveTab] = useState(data[0].id);
-
-  return (
-    <div className="space-y-16">
-      {/* Tab Navigation */}
-      <div className="flex flex-wrap justify-center gap-4 md:gap-8 border-b border-asili-honey/10 pb-8">
-        {data.map((category) => (
-          <button
-            key={category.id}
-            onClick={() => setActiveTab(category.id)}
-            className={cn(
-              "relative flex flex-col items-center gap-2 px-4 py-2 text-xs md:text-sm font-bold uppercase tracking-[0.2em] transition-all duration-300",
-              activeTab === category.id
-                ? theme === "luxury" 
-                  ? "text-asili-gold"
-                  : "text-asili-green"
-                : "text-gray-400 hover:text-gray-600"
-            )}
-          >
-            {category.title}
-            {activeTab === category.id && (
-              <motion.div 
-                layoutId="activeTab"
-                className={cn(
-                  "absolute bottom-0 left-0 right-0 h-0.5",
-                  theme === "luxury" ? "bg-asili-gold" : "bg-asili-green"
-                )}
-              />
-            )}
-          </button>
-        ))}
-      </div>
-
-      {/* Tab Content */}
-      <div className="relative">
-        <AnimatePresence mode="wait">
-          {data.map((category) => (
-            activeTab === category.id && (
-              <motion.div
-                key={category.id}
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                transition={{ duration: 0.5 }}
-                className="grid lg:grid-cols-12 gap-12 items-start"
-              >
-                <div className="lg:col-span-5 space-y-8">
-                  <div className={cn(
-                    "p-10 rounded-[2.5rem] border backdrop-blur-sm",
-                    theme === "luxury" ? "bg-asili-dark/50 border-asili-gold/20" : "bg-white/50 border-asili-honey/10"
-                  )}>
-                    <div className={cn(
-                      "w-16 h-16 rounded-2xl flex items-center justify-center mb-8",
-                      theme === "luxury" ? "bg-asili-gold/10 text-asili-gold" : "bg-asili-green/10 text-asili-green"
-                    )}>
-                      {category.icon}
-                    </div>
-                    <h3 className={cn(
-                      "text-4xl font-bold mb-6 title-spacing",
-                      theme === "luxury" ? "text-asili-gold" : "text-asili-green"
-                    )}>{category.title}</h3>
-                    <p className={cn(
-                      "text-lg leading-relaxed opacity-80",
-                      theme === "luxury" ? "text-asili-cream/70" : "text-asili-green/70"
-                    )}>{category.description}</p>
-                  </div>
-                </div>
-
-                <div className="lg:col-span-7 grid sm:grid-cols-2 gap-6">
-                  {category.items.map((item, idx) => (
-                    <motion.div
-                      key={item.name}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                      className={cn(
-                        "group p-8 rounded-3xl border transition-all duration-500 hover:-translate-y-2",
-                        theme === "luxury" 
-                          ? "bg-asili-dark border-asili-gold/10 hover:border-asili-gold hover:shadow-[0_20px_50px_rgba(212,175,55,0.1)]"
-                          : "bg-white border-asili-honey/10 hover:border-asili-honey hover:shadow-[0_20px_50px_rgba(45,79,30,0.05)]"
-                      )}
-                    >
-                      <div className="flex justify-between items-start mb-4">
-                        <h4 className={cn(
-                          "font-bold text-xl",
-                          theme === "luxury" ? "text-asili-cream" : "text-asili-green"
-                        )}>{item.name}</h4>
-                        <span className={cn(
-                          "text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest",
-                          theme === "luxury" 
-                            ? "bg-asili-gold/10 text-asili-gold"
-                            : "bg-asili-cream text-asili-honey"
-                        )}>{item.price}</span>
-                      </div>
-                      <p className={cn(
-                        "text-sm leading-relaxed",
-                        theme === "luxury" ? "text-asili-cream/40" : "text-asili-green/60"
-                      )}>{item.desc}</p>
-                    </motion.div>
-                  ))}
-                </div>
-              </motion.div>
-            )
-          ))}
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-};
-
-// Custom Visual Components to replace problematic images
-const HoneyTechIllustration = () => (
-  <div className="relative w-full h-full min-h-[400px] flex items-center justify-center p-8">
-    <div className="absolute inset-0 bg-asili-honey/5 rounded-[5rem] overflow-hidden">
-      <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#d4af37 1px, transparent 1px)', backgroundSize: '20px 20px' }}></div>
-    </div>
-    
-    <div className="relative z-10 w-full max-w-lg aspect-square flex items-center justify-center">
-      {/* Background circles */}
-      <motion.div 
-        animate={{ scale: [1, 1.1, 1], opacity: [0.3, 0.5, 0.3] }}
-        transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }}
-        className="absolute w-4/5 h-4/5 rounded-full bg-asili-honey/10 blur-3xl"
-      />
-      
-      {/* Main Illustration Structure */}
-      <svg viewBox="0 0 400 400" className="w-full h-full drop-shadow-2xl">
-        {/* Hexagonal Pattern */}
-        <defs>
-          <pattern id="hexagons" width="40" height="40" patternUnits="userSpaceOnUse" patternTransform="scale(0.5)">
-            <path d="M20 0L37.32 10V30L20 40L2.68 30V10L20 0Z" fill="none" stroke="#d4af37" strokeWidth="0.5" opacity="0.3" />
-          </pattern>
-        </defs>
-        
-        {/* Abstract Leaf/Nature Pattern */}
-        <motion.path 
-          initial={{ pathLength: 0, opacity: 0 }}
-          animate={{ pathLength: 1, opacity: 1 }}
-          transition={{ duration: 2, ease: "easeInOut" }}
-          d="M200 80C200 80 260 140 260 200C260 260 200 320 200 320C200 320 140 260 140 200C140 140 200 80 200 80Z" 
-          fill="#2d4f1e" 
-          opacity="0.1"
-        />
-        
-        {/* Connected Nodes representing Traceability */}
-        <g>
-          {[
-            { x: 120, y: 150 }, { x: 280, y: 150 }, 
-            { x: 200, y: 120 }, { x: 200, y: 280 },
-            { x: 150, y: 230 }, { x: 250, y: 230 }
-          ].map((node, i) => (
-            <motion.circle 
-              key={i}
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ delay: 0.5 + i * 0.1 }}
-              cx={node.x} cy={node.y} r="4" fill="#d4af37" 
-            />
-          ))}
-          
-          <motion.path 
-            initial={{ pathLength: 0 }}
-            animate={{ pathLength: 1 }}
-            transition={{ duration: 1.5, delay: 1 }}
-            d="M200 120 L120 150 L150 230 L200 280 L250 230 L280 150 Z" 
-            fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="4 4"
-          />
-        </g>
-        
-        {/* Central Icon */}
-        <g transform="translate(180, 180) scale(0.8)">
-          <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" fill="white" opacity="0.1" />
-          <path d="M12 2v20M2 12h20M7 7l10 10M17 7L7 10" stroke="#d4af37" strokeWidth="2" strokeLinecap="round" />
-        </g>
-        
-        {/* Golden Drops */}
-        <motion.circle 
-          animate={{ y: [0, 15, 0], opacity: [0.4, 0.8, 0.4] }}
-          transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-          cx="200" cy="200" r="30" fill="url(#hexagons)" opacity="0.5"
-        />
-      </svg>
-      
-      {/* Floating Elements */}
-      <div className="absolute top-10 right-10 p-4 glass rounded-2xl border border-asili-honey/20 shadow-xl backdrop-blur-md">
-        <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-asili-honey"></div>
-          <span className="text-[10px] font-bold uppercase tracking-widest text-asili-green">Origin Found</span>
-        </div>
-        <p className="text-[9px] font-mono text-asili-green/40 leading-none">MKW-254-HIVE7</p>
-      </div>
-    </div>
-  </div>
-);
-
-const ResearchIllustration = () => (
-  <div className="relative w-full h-[500px] flex items-center justify-center bg-asili-dark/50 rounded-[3.5rem] border border-asili-gold/10 overflow-hidden p-12">
-    <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#d4af37 0.5px, transparent 0.5px), linear-gradient(90deg, #d4af37 0.5px, transparent 0.5px)', backgroundSize: '40px 40px' }}></div>
-    
-    <div className="relative z-10 w-full max-w-md h-full flex flex-col justify-center">
-      <div className="flex items-center gap-4 mb-8">
-        <div className="px-3 py-1 rounded bg-asili-gold text-asili-black text-[10px] font-bold uppercase tracking-wider">Analysis Active</div>
-        <div className="h-px flex-1 bg-asili-gold/20"></div>
-      </div>
-      
-      <div className="space-y-6">
-        {[
-          { label: "Purity Index", val: "99.8%", color: "text-asili-gold" },
-          { label: "Moisture Content", val: "17.2%", color: "text-asili-gold" },
-          { label: "Pollen Count", val: "High Density", color: "text-asili-cream" }
-        ].map((item, i) => (
-          <motion.div 
-            key={i}
-            initial={{ x: -20, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ delay: i * 0.2 }}
-            className="flex flex-col gap-1"
-          >
-            <div className="flex justify-between text-[10px] uppercase tracking-widest opacity-40">
-              <span>{item.label}</span>
-              <span>Metric Verified</span>
-            </div>
-            <div className="flex items-end gap-4">
-              <span className={`text-3xl font-mono font-bold ${item.color}`}>{item.val}</span>
-              <div className="h-2 flex-1 bg-white/5 rounded-full overflow-hidden mb-2">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: "80%" }}
-                  transition={{ duration: 1.5, delay: 0.5 }}
-                  className="h-full bg-asili-gold/40"
-                />
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-      
-      {/* Schematic Hive SVG */}
-      <div className="mt-12 w-full flex justify-center">
-        <svg viewBox="0 0 200 100" className="w-full opacity-60">
-          <path d="M40 20 L160 20 L160 80 L40 80 Z" fill="none" stroke="#d4af37" strokeWidth="1" />
-          <path d="M40 40 L160 40 M40 60 L160 60" stroke="#d4af37" strokeWidth="1" opacity="0.3" />
-          <circle cx="100" cy="50" r="15" fill="none" stroke="#d4af37" strokeWidth="1" strokeDasharray="3 3" />
-          <path d="M100 35 L100 65 M85 50 L115 50" stroke="#d4af37" strokeWidth="1" opacity="0.5" />
-        </svg>
-      </div>
-    </div>
-  </div>
-);
-
-const AlchemyIllustration = () => (
-  <div className="relative w-full h-[600px] rounded-[4rem] bg-asili-dark/80 border border-white/5 overflow-hidden flex items-center justify-center p-12">
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,#d4af3710_0%,transparent_70%)]"></div>
-    
-    <div className="relative z-10 w-full h-full flex flex-col items-center justify-center text-center">
-      {/* Abstract Molecular Gold */}
-      <div className="relative mb-12">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-          className="w-64 h-64 border border-asili-gold/20 rounded-full flex items-center justify-center"
-        >
-          <motion.div 
-            animate={{ rotate: -360 }}
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="w-48 h-48 border border-asili-gold/40 rounded-full flex items-center justify-center border-dashed"
-          >
-            <div className="w-24 h-24 bg-asili-gold/30 rounded-full blur-xl animate-pulse"></div>
-          </motion.div>
-        </motion.div>
-        
-        {/* Atoms/Nodes */}
-        {[0, 60, 120, 180, 240, 300].map((deg, i) => (
-          <motion.div 
-            key={i}
-            animate={{ transform: `rotate(${deg}deg) translateY(-120px) scale(${[1, 1.2, 1][i%3]})` }}
-            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
-            className="absolute top-1/2 left-1/2 w-3 h-3 bg-asili-gold rounded-full shadow-[0_0_15px_#d4af37]"
-            style={{ marginTop: '-6px', marginLeft: '-6px' }}
-          />
-        ))}
-      </div>
-      
-      <div className="space-y-4">
-        <h3 className="text-asili-gold font-bold text-4xl italic font-serif">Aqueous Gold™</h3>
-        <p className="text-white/40 text-sm max-w-sm font-light leading-relaxed">
-          The molecular signature of Makueni blossom nectar, captured and verified for maximum enzymatic activity.
-        </p>
-        <div className="flex gap-4 justify-center pt-4">
-          <div className="text-center">
-            <span className="block text-asili-gold font-mono text-lg font-bold">17.5%</span>
-            <span className="text-[8px] uppercase tracking-widest opacity-40">Humidity</span>
-          </div>
-          <div className="w-px h-8 bg-white/10"></div>
-          <div className="text-center">
-            <span className="block text-asili-gold font-mono text-lg font-bold">8.4 PH</span>
-            <span className="text-[8px] uppercase tracking-widest opacity-40">Alkalinity</span>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);
-
-const HeritageIllustration = () => (
-  <div className="relative w-full h-[400px] lg:h-[600px] flex items-center justify-center bg-asili-honey/5 rounded-[3.5rem] border border-asili-honey/10 overflow-hidden group">
-    <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#2d4f1e 1px, transparent 1px)', backgroundSize: '30px 30px' }}></div>
-    
-    <div className="relative z-10 w-full max-w-sm flex flex-col items-center">
-      <div className="relative mb-8">
-        <motion.div 
-          animate={{ scale: [1, 1.05, 1] }}
-          transition={{ duration: 6, repeat: Infinity }}
-          className="w-48 h-48 rounded-full border border-asili-green/20 flex items-center justify-center"
-        >
-          <div className="w-40 h-40 rounded-full border border-asili-green/40 flex items-center justify-center border-dashed">
-            <Leaf className="w-16 h-16 text-asili-green opacity-40" />
-          </div>
-        </motion.div>
-        
-        {/* Geographic coordinates or markers */}
-        <div className="absolute -top-4 -right-4 p-3 bg-white rounded-xl shadow-lg border border-asili-honey/20">
-          <p className="text-[10px] font-bold text-asili-green">LOCATION</p>
-          <p className="text-[8px] font-mono opacity-50">1.8025° S, 37.6203° E</p>
-        </div>
-      </div>
-      
-      <div className="text-center space-y-4 px-8">
-        <h4 className="text-2xl font-bold text-asili-green font-serif">Makueni Dry-Lands</h4>
-        <p className="text-xs text-asili-green/60 leading-relaxed uppercase tracking-[0.2em]">High yield floral density • Indigenous Acacia • Community Verified</p>
-        <div className="pt-4 flex gap-2 justify-center">
-          {[1, 2, 3, 4, 5].map(i => (
-            <div key={i} className="w-1.5 h-1.5 rounded-full bg-asili-honey/30"></div>
-          ))}
-        </div>
-      </div>
-    </div>
-    
-    {/* Abstract terrain lines */}
-    <svg className="absolute bottom-0 left-0 w-full opacity-10" viewBox="0 0 400 100">
-      <path d="M0 80 Q100 20 200 80 T400 80" fill="none" stroke="#2d4f1e" strokeWidth="2" />
-      <path d="M0 90 Q100 30 200 90 T400 90" fill="none" stroke="#2d4f1e" strokeWidth="2" />
-    </svg>
-  </div>
-);
-
-const LuxuryHeroIllustration = () => (
-  <div className="absolute inset-0 overflow-hidden">
-    <div className="absolute inset-0 bg-asili-black"></div>
-    {/* Dynamic particles or light bokeh */}
-    <div className="absolute inset-0 opacity-30">
-      {Array.from({ length: 20 }).map((_, i) => (
-        <motion.div
-          key={i}
-          animate={{
-            y: [0, -100, 0],
-            opacity: [0.2, 0.5, 0.2],
-            scale: [1, 1.2, 1]
-          }}
-          transition={{
-            duration: 5 + i * 2,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
-          className="absolute bg-asili-gold rounded-full"
-          style={{
-            width: Math.random() * 4 + 1 + 'px',
-            height: Math.random() * 4 + 1 + 'px',
-            left: Math.random() * 100 + '%',
-            top: Math.random() * 100 + '%',
-            filter: 'blur(1px)'
-          }}
-        />
-      ))}
-    </div>
-    
-    {/* Large abstract glow */}
-    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl aspect-square bg-[radial-gradient(circle,rgba(212,175,55,0.15)_0%,transparent_70%)] blur-[100px]"></div>
-    
-    {/* Geometric structural lines */}
-    <svg className="absolute inset-0 w-full h-full opacity-10" viewBox="0 0 1920 1080">
-      <defs>
-        <linearGradient id="gold-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#d4af37" />
-          <stop offset="100%" stopColor="transparent" />
-        </linearGradient>
-      </defs>
-      <g stroke="url(#gold-grad)" strokeWidth="0.5" fill="none">
-        <circle cx="960" cy="540" r="400" />
-        <circle cx="960" cy="540" r="600" />
-        <path d="M0 540 L1920 540 M960 0 L960 1080" />
-        <motion.path 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
-          style={{ transformOrigin: 'center' }}
-          d="M560 540 L1360 540 M960 140 L960 940" 
-        />
-      </g>
-    </svg>
-  </div>
-);
-
-const Section = ({ children, className, id }: { children: React.ReactNode, className?: string, id?: string }) => (
-  <section id={id} className={cn("py-20 px-6 md:px-12 lg:px-24", className)}>
-    {children}
-  </section>
-);
+type Theme = "nature" | "luxury";
+type FormStatus = "idle" | "submitting" | "success" | "error";
 
 interface FadeInProps {
   children: React.ReactNode;
-  delay?: number;
   className?: string;
+  delay?: number;
   key?: React.Key;
 }
 
-const FadeIn = ({ children, delay = 0, className }: FadeInProps) => (
+const FadeIn = ({ children, className, delay = 0 }: FadeInProps) => (
   <motion.div
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 28 }}
     whileInView={{ opacity: 1, y: 0 }}
-    viewport={{ once: true }}
-    transition={{ duration: 0.8, delay }}
+    viewport={{ once: true, margin: "-80px" }}
+    transition={{ duration: 0.65, delay, ease: [0.22, 1, 0.36, 1] }}
     className={className}
   >
     {children}
   </motion.div>
 );
 
-export default function App() {
-  const [view, setView] = useState<"brand" | "luxury">("brand");
-  const [formStatus, setFormStatus] = useState<"idle" | "submitting" | "success" | "error">("idle");
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+const Section = ({
+  children,
+  className,
+  id,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  id?: string;
+}) => (
+  <section id={id} className={cn("scroll-mt-24 px-6 py-20 md:px-12 lg:px-24 lg:py-28", className)}>
+    <div className="mx-auto max-w-7xl">{children}</div>
+  </section>
+);
 
-  useEffect(() => {
-    setIsMenuOpen(false);
-    window.scrollTo({ top: 0, behavior: 'instant' });
-  }, [view]);
+const Logo = ({ theme }: { theme: Theme }) => (
+  <a href="/" className="group flex items-center gap-3" aria-label="Asili home">
+    <span
+      className={cn(
+        "flex h-10 w-10 items-center justify-center rounded-2xl transition-transform group-hover:rotate-6",
+        theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
+      )}
+    >
+      <Leaf className="h-5 w-5" aria-hidden="true" />
+    </span>
+    <span>
+      <span
+        className={cn(
+          "block font-serif text-2xl font-bold leading-none",
+          theme === "luxury" ? "text-asili-cream" : "text-asili-green",
+        )}
+      >
+        Asili
+      </span>
+      <span
+        className={cn(
+          "mt-1 block text-[8px] font-bold uppercase tracking-[0.32em]",
+          theme === "luxury" ? "text-asili-gold/80" : "text-asili-earth/70",
+        )}
+      >
+        Origin · Wellness
+      </span>
+    </span>
+  </a>
+);
 
-  // Disable scroll when mobile menu is open
-  useEffect(() => {
-    if (isMenuOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "unset";
-    }
-  }, [isMenuOpen]);
+const Header = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => {
+  const [isOpen, setIsOpen] = useState(false);
 
-  const handleContactSubmit = async (e: React.FormEvent<HTMLFormElement>, type: string) => {
-    e.preventDefault();
-    const form = e.currentTarget;
-    setFormStatus("submitting");
-    const formData = new FormData(form);
-    const data = Object.fromEntries(formData.entries());
-    
+  const links =
+    page === "home"
+      ? [
+          ["Honey", "#honey"],
+          ["Our story", "#story"],
+          ["Why Asili", "#why-asili"],
+          ["Traceability", "#traceability"],
+          ["Partners", "#partners"],
+        ]
+      : [
+          ["The honey", "#the-honey"],
+          ["Origin", "#origin"],
+          ["Traceability", "#traceability"],
+          ["FAQ", "#faq"],
+        ];
+
+  return (
+    <header
+      className={cn(
+        "fixed inset-x-0 top-0 z-50 border-b backdrop-blur-xl",
+        theme === "luxury"
+          ? "border-asili-gold/10 bg-asili-black/90"
+          : "border-asili-honey/10 bg-asili-cream/90",
+      )}
+    >
+      <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 md:px-12">
+        <Logo theme={theme} />
+
+        <nav className="hidden items-center gap-7 lg:flex" aria-label="Main navigation">
+          {links.map(([label, href]) => (
+            <a
+              key={href}
+              href={href}
+              className={cn(
+                "text-[11px] font-bold uppercase tracking-[0.16em] transition-colors",
+                theme === "luxury"
+                  ? "text-asili-cream/65 hover:text-asili-gold"
+                  : "text-asili-green/65 hover:text-asili-green",
+              )}
+            >
+              {label}
+            </a>
+          ))}
+        </nav>
+
+        <div className="hidden items-center gap-3 lg:flex">
+          <a
+            href={page === "home" ? "/honey/" : "/"}
+            className={cn(
+              "rounded-full px-5 py-3 text-[10px] font-bold uppercase tracking-widest transition-colors",
+              theme === "luxury"
+                ? "border border-asili-gold/30 text-asili-gold hover:bg-asili-gold/10"
+                : "border border-asili-green/15 text-asili-green hover:bg-asili-green/5",
+            )}
+          >
+            {page === "home" ? "Explore honey" : "About Asili"}
+          </a>
+          <a
+            href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={cn(
+              "rounded-full px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-transform hover:-translate-y-0.5",
+              theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
+            )}
+          >
+            Buy our honey
+          </a>
+        </div>
+
+        <button
+          type="button"
+          className={cn(
+            "rounded-xl p-2 lg:hidden",
+            theme === "luxury" ? "text-asili-gold" : "text-asili-green",
+          )}
+          aria-label={isOpen ? "Close menu" : "Open menu"}
+          aria-expanded={isOpen}
+          onClick={() => setIsOpen((current) => !current)}
+        >
+          {isOpen ? <X aria-hidden="true" /> : <Menu aria-hidden="true" />}
+        </button>
+      </div>
+
+      {isOpen && (
+        <nav
+          className={cn(
+            "border-t px-6 pb-7 pt-5 lg:hidden",
+            theme === "luxury"
+              ? "border-asili-gold/10 bg-asili-black"
+              : "border-asili-honey/10 bg-asili-cream",
+          )}
+          aria-label="Mobile navigation"
+        >
+          <div className="mx-auto flex max-w-7xl flex-col gap-4">
+            {links.map(([label, href]) => (
+              <a
+                key={href}
+                href={href}
+                onClick={() => setIsOpen(false)}
+                className={cn(
+                  "py-1 text-sm font-bold",
+                  theme === "luxury" ? "text-asili-cream" : "text-asili-green",
+                )}
+              >
+                {label}
+              </a>
+            ))}
+            <div className="mt-2 grid grid-cols-2 gap-3">
+              <a
+                href={page === "home" ? "/honey/" : "/"}
+                className={cn(
+                  "rounded-full border px-4 py-3 text-center text-[10px] font-bold uppercase tracking-wider",
+                  theme === "luxury"
+                    ? "border-asili-gold/30 text-asili-gold"
+                    : "border-asili-green/20 text-asili-green",
+                )}
+              >
+                {page === "home" ? "Explore honey" : "About Asili"}
+              </a>
+              <a
+                href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={cn(
+                  "rounded-full px-4 py-3 text-center text-[10px] font-black uppercase tracking-wider",
+                  theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
+                )}
+              >
+                Buy honey
+              </a>
+            </div>
+          </div>
+        </nav>
+      )}
+    </header>
+  );
+};
+
+const HoneyJarIllustration = ({ dark = false }: { dark?: boolean }) => (
+  <div className="relative mx-auto aspect-square w-full max-w-[560px]" aria-hidden="true">
+    <motion.div
+      animate={{ rotate: [0, 2, 0, -2, 0] }}
+      transition={{ duration: 18, repeat: Infinity, ease: "easeInOut" }}
+      className={cn(
+        "absolute inset-[8%] rounded-[42%_58%_48%_52%/48%_38%_62%_52%]",
+        dark ? "bg-asili-gold/10" : "bg-asili-honey/15",
+      )}
+    />
+    <svg viewBox="0 0 520 520" className="relative h-full w-full drop-shadow-2xl">
+      <defs>
+        <linearGradient id={dark ? "jarGoldDark" : "jarGoldLight"} x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0" stopColor="#f4d03f" />
+          <stop offset="0.55" stopColor="#c99524" />
+          <stop offset="1" stopColor="#8b5d12" />
+        </linearGradient>
+        <linearGradient id={dark ? "glassDark" : "glassLight"} x1="0" x2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.48" />
+          <stop offset="0.35" stopColor="#ffffff" stopOpacity="0.08" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0.18" />
+        </linearGradient>
+      </defs>
+      <motion.g
+        initial={{ y: 8 }}
+        animate={{ y: [-4, 6, -4] }}
+        transition={{ duration: 7, repeat: Infinity, ease: "easeInOut" }}
+      >
+        <path d="M173 150h174l18 52v196c0 34-25 60-57 60h-96c-32 0-57-26-57-60V202l18-52Z" fill={`url(#${dark ? "jarGoldDark" : "jarGoldLight"})`} />
+        <path d="M166 143c0-12 10-22 22-22h144c12 0 22 10 22 22v30H166v-30Z" fill={dark ? "#d4af37" : "#1a3a1e"} />
+        <path d="M176 153h168" stroke={dark ? "#0a0a0a" : "#f9f7f2"} strokeOpacity="0.45" strokeWidth="3" />
+        <path d="M190 209c-10 67-10 138 0 210" fill="none" stroke={`url(#${dark ? "glassDark" : "glassLight"})`} strokeWidth="14" strokeLinecap="round" />
+        <rect x="194" y="254" width="132" height="112" rx="18" fill={dark ? "#0a0a0a" : "#f9f7f2"} />
+        <path d="m260 277 25 15v29l-25 15-25-15v-29l25-15Z" fill="none" stroke={dark ? "#d4af37" : "#1a3a1e"} strokeWidth="3" />
+        <path d="M248 308c11-20 28-15 29-31 11 20 3 39-17 46-16-5-22-20-12-35 1 9 6 13 12 15" fill={dark ? "#d4af37" : "#1a3a1e"} />
+        <text x="260" y="350" textAnchor="middle" fontFamily="serif" fontSize="13" fontWeight="700" letterSpacing="4" fill={dark ? "#d4af37" : "#1a3a1e"}>ASILI</text>
+      </motion.g>
+      {[0, 1, 2, 3, 4].map((i) => (
+        <motion.circle
+          key={i}
+          cx={82 + i * 88}
+          cy={110 + (i % 2) * 24}
+          r={4 + (i % 2) * 2}
+          fill={dark ? "#d4af37" : "#c5a059"}
+          animate={{ y: [0, -12, 0], opacity: [0.35, 0.9, 0.35] }}
+          transition={{ duration: 3.5 + i * 0.35, repeat: Infinity, delay: i * 0.25 }}
+        />
+      ))}
+    </svg>
+    <div
+      className={cn(
+        "absolute bottom-[8%] left-[5%] rounded-2xl border px-4 py-3 shadow-xl backdrop-blur-md",
+        dark
+          ? "border-asili-gold/20 bg-asili-black/80 text-asili-gold"
+          : "border-asili-honey/20 bg-white/80 text-asili-green",
+      )}
+    >
+      <span className="block text-[8px] font-bold uppercase tracking-[0.25em] opacity-60">Origin</span>
+      <span className="mt-1 flex items-center gap-1.5 text-xs font-bold">
+        <MapPin className="h-3.5 w-3.5" /> Makueni, Kenya
+      </span>
+    </div>
+  </div>
+);
+
+const TraceabilityCard = ({ compact = false }: { compact?: boolean }) => {
+  const fields = [
+    { label: "Source", value: "Makueni, Kenya", icon: <MapPin aria-hidden="true" /> },
+    { label: "Quality check", value: "Moisture reading", icon: <Droplets aria-hidden="true" /> },
+    { label: "Record", value: "Batch reference", icon: <ScanLine aria-hidden="true" /> },
+    { label: "Handling", value: "Harvest notes", icon: <Leaf aria-hidden="true" /> },
+  ];
+
+  return (
+    <div className="relative overflow-hidden rounded-[2.5rem] border border-asili-gold/20 bg-asili-black p-7 text-asili-cream shadow-2xl md:p-10 lg:rounded-[3.5rem] lg:p-12">
+      <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-asili-gold/10 blur-3xl" />
+      <div className="relative">
+        <div className="mb-9 flex flex-col justify-between gap-5 sm:flex-row sm:items-start">
+          <div>
+            <div className="mb-3 flex items-center gap-2 text-asili-gold">
+              <span className="h-2 w-2 rounded-full bg-asili-gold" />
+              <span className="text-[9px] font-black uppercase tracking-[0.35em]">Traceability preview</span>
+            </div>
+            <h3 className="text-3xl font-bold sm:text-4xl">The Glass Hive</h3>
+            <p className="mt-2 max-w-xl text-sm leading-relaxed text-asili-cream/65">
+              Our batch-passport system is being built to connect eligible jars with clear origin and quality information.
+            </p>
+          </div>
+          <div className="w-fit rounded-xl border border-asili-gold/20 bg-asili-gold/10 px-4 py-2 font-mono">
+            <span className="block text-[7px] uppercase tracking-widest text-asili-gold/60">Sample record</span>
+            <span className="text-xs font-bold text-asili-gold">DEMO-MAK-01</span>
+          </div>
+        </div>
+
+        <div className={cn("grid gap-3", compact ? "sm:grid-cols-2" : "sm:grid-cols-2 lg:grid-cols-4")}>
+          {fields.map((field) => (
+            <div key={field.label} className="rounded-2xl border border-white/8 bg-white/[0.035] p-5">
+              <div className="mb-5 h-5 w-5 text-asili-gold [&_svg]:h-5 [&_svg]:w-5">{field.icon}</div>
+              <span className="block text-[8px] font-bold uppercase tracking-[0.2em] text-white/45">{field.label}</span>
+              <span className="mt-2 block text-sm font-bold text-asili-cream">{field.value}</span>
+            </div>
+          ))}
+        </div>
+
+        <div className="mt-7 flex flex-col justify-between gap-4 border-t border-white/8 pt-6 sm:flex-row sm:items-center">
+          <p className="max-w-2xl text-xs leading-relaxed text-asili-cream/50">
+            Demo only. Actual records will vary by batch and will only display information that has been captured and reviewed.
+          </p>
+          <a
+            href="/b/SAMPLE-2604-01.html"
+            className="inline-flex shrink-0 items-center gap-2 text-[10px] font-black uppercase tracking-widest text-asili-gold hover:text-asili-gold-light"
+          >
+            View sample passport <ArrowRight className="h-4 w-4" aria-hidden="true" />
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ContactForm = ({ theme, type }: { theme: Theme; type: string }) => {
+  const [status, setStatus] = useState<FormStatus>("idle");
+
+  const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setStatus("submitting");
+    const form = event.currentTarget;
+    const payload = Object.fromEntries(new FormData(form).entries());
+
     try {
       const response = await fetch("/api/contact", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...data, type }),
+        body: JSON.stringify({ ...payload, type }),
       });
-      
-      if (response.ok) {
-        setFormStatus("success");
-        form.reset();
-        setTimeout(() => setFormStatus("idle"), 5000);
-      } else {
-        setFormStatus("error");
-      }
-    } catch (error) {
-      console.error(error);
-      setFormStatus("error");
+
+      if (!response.ok) throw new Error("Request failed");
+      setStatus("success");
+      form.reset();
+    } catch {
+      setStatus("error");
     }
   };
 
-  const openWhatsApp = (topic: string) => {
-    const message = encodeURIComponent(`Hi Asili, I'm interested in ${topic}. Can we discuss further?`);
-    window.open(`https://wa.me/254717578394?text=${message}`, '_blank');
-  };
-  
+  const inputClass = cn(
+    "w-full rounded-2xl border px-5 py-4 text-sm outline-none transition-colors placeholder:opacity-50",
+    theme === "luxury"
+      ? "border-white/10 bg-white/[0.04] text-asili-cream focus:border-asili-gold/60"
+      : "border-asili-green/10 bg-white text-asili-green focus:border-asili-honey",
+  );
+
   return (
-    <div ref={containerRef} className={cn(
-      "relative min-h-screen selection:bg-asili-gold transition-colors duration-700",
-      view === "luxury" ? "bg-asili-black text-asili-cream" : "bg-asili-cream text-asili-green"
-    )}>
-      {/* Floating WhatsApp CTA */}
-      <motion.button
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => openWhatsApp("General Inquiry")}
+    <form onSubmit={handleSubmit} className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="sr-only" htmlFor={`${type}-name`}>Name</label>
+        <input id={`${type}-name`} name="name" type="text" required autoComplete="name" placeholder="Your name" className={inputClass} />
+        <label className="sr-only" htmlFor={`${type}-email`}>Email</label>
+        <input id={`${type}-email`} name="email" type="email" required autoComplete="email" placeholder="Email address" className={inputClass} />
+      </div>
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <label className="sr-only" htmlFor={`${type}-phone`}>Phone number</label>
+        <input id={`${type}-phone`} name="phone" type="tel" autoComplete="tel" placeholder="Phone number (optional)" className={inputClass} />
+        <label className="sr-only" htmlFor={`${type}-interest`}>Area of interest</label>
+        <select id={`${type}-interest`} name="interest" required defaultValue="" className={inputClass}>
+          <option value="" disabled>What can we help with?</option>
+          <option>Personal honey order</option>
+          <option>Retail stocking</option>
+          <option>Bulk honey</option>
+          <option>Corporate gifting</option>
+          <option>Distribution partnership</option>
+          <option>Investment or grant partnership</option>
+          <option>Other inquiry</option>
+        </select>
+      </div>
+      <label className="sr-only" htmlFor={`${type}-message`}>Message</label>
+      <textarea id={`${type}-message`} name="message" rows={4} required placeholder="Tell us what you need" className={inputClass} />
+      <button
+        type="submit"
+        disabled={status === "submitting"}
         className={cn(
-          "fixed bottom-8 right-8 z-[100] w-16 h-16 rounded-full flex items-center justify-center shadow-2xl transition-all",
-          view === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white"
+          "flex w-full items-center justify-center gap-2 rounded-full px-6 py-4 text-[11px] font-black uppercase tracking-widest transition-transform hover:-translate-y-0.5 disabled:cursor-wait disabled:opacity-60",
+          theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
         )}
       >
-        <Zap className="w-8 h-8" />
-        <span className="hidden sm:block absolute -top-12 right-0 bg-white text-black text-[10px] font-bold px-3 py-1 rounded-full whitespace-nowrap shadow-xl border border-black/5 animate-bounce">
-          Chat with Founder
-        </span>
-      </motion.button>
+        {status === "submitting" ? "Sending…" : status === "success" ? "Message sent" : "Send inquiry"}
+        {status === "success" ? <Check className="h-4 w-4" aria-hidden="true" /> : <ArrowRight className="h-4 w-4" aria-hidden="true" />}
+      </button>
+      {status === "error" && (
+        <p role="alert" className="text-center text-xs text-red-500">
+          We could not send that message. Please try WhatsApp or email us instead.
+        </p>
+      )}
+      <p className={cn("text-center text-[10px] leading-relaxed", theme === "luxury" ? "text-white/40" : "text-asili-green/50")}>
+        We use your details only to respond to this inquiry. We do not sell your information.
+      </p>
+    </form>
+  );
+};
 
-      {/* Universal Navigation */}
-      <nav className={cn(
-        "fixed top-0 left-0 right-0 z-50 h-20 flex items-center justify-between px-6 md:px-12 transition-all duration-500",
-        view === "luxury" ? "glass-dark" : "glass"
-      )}>
-        <div className="flex items-center gap-3">
-          <button 
-            onClick={() => {
-              setView("brand");
-              setIsMenuOpen(false);
-            }}
-            className="flex items-center gap-2 group"
-          >
-            <div className={cn(
-              "w-10 h-10 rounded-full flex items-center justify-center transition-all",
-              view === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white"
-            )}>
-              <Leaf className="w-6 h-6" />
-            </div>
-            <span className={cn(
-              "font-serif text-2xl font-bold tracking-tight transition-colors",
-              view === "luxury" ? "text-asili-gold" : "text-asili-green"
-            )}>ASILI</span>
-          </button>
-        </div>
-        
-        <div className="hidden lg:flex items-center gap-10 text-sm font-bold uppercase tracking-widest">
-          {view === "brand" ? (
-            <>
-              <a href="#about" className="hover:text-asili-honey transition-colors">Vision</a>
-              <a href="#foundation" className="hover:text-asili-honey transition-colors">Foundation</a>
-              <a href="#catalogue" className="hover:text-asili-honey transition-colors">Portfolio</a>
-              <a href="#impact" className="hover:text-asili-honey transition-colors">Impact</a>
-              <a href="#partners" className="hover:text-asili-honey transition-colors">Partnership Hub</a>
-            </>
-          ) : (
-            <>
-              <a href="#manifesto" className="hover:text-asili-gold transition-colors">Vision</a>
-              <a href="#glass-hive-concept" className="hover:text-asili-gold transition-colors">Glass Hive™</a>
-              <a href="#functional-alchemy" className="hover:text-asili-gold transition-colors">Alchemy</a>
-              <a href="#honey-catalogue" className="hover:text-asili-gold transition-colors">Catalogue</a>
-              <a href="#b2b" className="hover:text-asili-gold transition-colors">Partnership Hub</a>
-            </>
-          )}
-        </div>
-
-        <div className="flex items-center gap-4">
-          <button
-            onClick={() => setView(view === "brand" ? "luxury" : "brand")}
-            className={cn(
-              "hidden sm:block px-6 py-2.5 rounded-full text-xs font-black uppercase tracking-widest transition-all shadow-xl",
-              view === "luxury" 
-                ? "bg-asili-green text-white hover:bg-asili-leaf" 
-                : "bg-asili-gold text-asili-black hover:bg-asili-gold-light"
-            )}
-          >
-            {view === "brand" ? "Enter Honey Showroom" : "Back to Main Brand"}
-          </button>
-          
-          <button 
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-            className={cn(
-              "lg:hidden w-10 h-10 flex items-center justify-center rounded-full transition-colors",
-              view === "luxury" ? "text-asili-gold hover:bg-asili-gold/10" : "text-asili-green hover:bg-asili-green/10"
-            )}
-          >
-            {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-          </button>
-        </div>
-      </nav>
-
-      {/* Mobile Menu Overlay */}
-      <AnimatePresence>
-        {isMenuOpen && (
-          <motion.div
-            initial={{ opacity: 0, x: "100%" }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className={cn(
-              "fixed inset-0 z-[45] lg:hidden flex flex-col pt-32 px-10 gap-8",
-              view === "luxury" ? "bg-asili-black text-asili-cream" : "bg-asili-cream text-asili-green"
-            )}
-          >
-            <div className="flex flex-col gap-6 text-2xl font-bold font-serif">
-              {view === "brand" ? (
-                <>
-                  <a href="#about" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Vision</a>
-                  <a href="#foundation" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Foundation</a>
-                  <a href="#catalogue" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Portfolio</a>
-                  <a href="#impact" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Impact</a>
-                  <a href="#partners" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-honey">Partnership Hub</a>
-                </>
-              ) : (
-                <>
-                  <a href="#maturity" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Maturity</a>
-                  <a href="#honey-catalogue" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Gold Label</a>
-                  <a href="#traceability" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Glass Hive™</a>
-                  <a href="#b2b" onClick={() => setIsMenuOpen(false)} className="hover:text-asili-gold">Partnership Hub</a>
-                </>
-              )}
-            </div>
-            
-            <div className="mt-8 pt-8 border-t border-current opacity-10"></div>
-            
-            <button
-              onClick={() => {
-                setView(view === "brand" ? "luxury" : "brand");
-                setIsMenuOpen(false);
-              }}
-              className={cn(
-                "w-full py-5 rounded-2xl text-center font-black uppercase tracking-widest text-sm shadow-xl",
-                view === "luxury" 
-                  ? "bg-asili-green text-white" 
-                  : "bg-asili-gold text-asili-black"
-              )}
-            >
-              {view === "brand" ? "Enter Honey Showroom" : "Back to Main Brand"}
-            </button>
-            
-            <div className="mt-auto pb-10 flex flex-col gap-2">
-              <p className="text-[10px] uppercase tracking-widest opacity-40 font-bold">Inquiries</p>
-              <a href="mailto:kevinsila100@gmail.com" className="text-sm font-bold">kevinsila100@gmail.com</a>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {view === "brand" ? (
-        /* BRAND (NATURE) VIEW */
-        <main className="pt-20">
-          {/* Brand Hero */}
-          <Section className="relative min-h-[80vh] lg:min-h-screen flex items-center pt-2 lg:pt-0 overflow-hidden bg-asili-cream">
-            <div className="absolute inset-0 z-0">
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_30%,#e1e8dc_0%,transparent_70%)] opacity-40"></div>
-              <div className="absolute right-[-20%] lg:right-[-5%] top-[5%] lg:top-[10%] w-full lg:w-1/2 h-full lg:h-4/5 opacity-40 lg:opacity-100">
-                <HoneyTechIllustration />
-              </div>
-            </div>
-            <div className="relative z-10 max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+const HomePage = () => {
+  return (
+    <>
+      <Header theme="nature" page="home" />
+      <main id="main-content">
+        <section className="relative overflow-hidden px-6 pb-20 pt-32 md:px-12 lg:min-h-screen lg:px-24 lg:pb-24 lg:pt-36">
+          <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_78%_34%,rgba(197,160,89,0.16),transparent_34%),radial-gradient(circle_at_15%_15%,rgba(45,90,39,0.08),transparent_30%)]" />
+          <div className="mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
+            <div>
               <FadeIn>
-                <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full border border-asili-honey/30 bg-asili-honey/5 mb-4 lg:mb-6">
-                  <span className="w-2 h-2 rounded-full bg-asili-honey animate-pulse"></span>
-                  <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-asili-green mt-0.5">Healing People & The Planet</span>
+                <div className="mb-6 flex items-center gap-3 text-asili-earth">
+                  <span className="h-px w-10 bg-asili-honey" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.35em]">African roots · Makueni origin</span>
                 </div>
-                <h1 className="text-4xl sm:text-7xl lg:text-8xl font-bold mb-4 lg:mb-6 leading-[1.1] md:leading-[1] text-asili-green title-spacing hero-text-shadow">
-                  Trust & <br />
-                  <span className="italic font-serif text-asili-honey">Traceability.</span>
+                <h1 className="max-w-4xl text-5xl font-bold leading-[0.96] tracking-[-0.045em] text-asili-green sm:text-6xl lg:text-[5.4rem] xl:text-[6.2rem]">
+                  Raw Makueni honey. <span className="italic text-asili-honey">Clear from the start.</span>
                 </h1>
-                <p className="text-lg md:text-xl lg:text-2xl text-asili-green/70 mb-6 lg:mb-8 leading-relaxed font-light max-w-xl">
-                  We don't just provide honey; we provide truth. Asili delivers absolute trust through real-time traceability systems deeply rooted in our Kenyan heritage.
+                <p className="mt-7 max-w-2xl text-base leading-relaxed text-asili-green/70 sm:text-lg">
+                  Asili is a Kenyan eco-wellness brand starting with responsibly sourced honey from Makueni—and building clearer origin and batch-quality information around every jar.
                 </p>
-                <div className="flex flex-col sm:flex-row gap-4 lg:gap-5">
-                  <button onClick={() => setView("luxury")} className="group bg-asili-green text-white px-8 lg:px-10 py-4 lg:py-5 rounded-full font-bold flex items-center justify-center gap-3 hover:bg-asili-leaf transition-all shadow-[0_20px_40px_rgba(45,79,30,0.2)]">
-                    Explore Honey Showroom <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </button>
-                  <a href="#catalogue" className="bg-white border border-asili-honey/20 text-asili-green px-8 lg:px-10 py-4 lg:py-5 rounded-full font-bold hover:bg-asili-cream transition-all text-center">
-                    View Portfolio
+                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                  <a
+                    href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group inline-flex items-center justify-center gap-3 rounded-full bg-asili-green px-8 py-4 text-sm font-bold text-white shadow-[0_18px_40px_rgba(26,58,30,0.18)] transition-transform hover:-translate-y-1"
+                  >
+                    Buy Asili honey <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                  </a>
+                  <a
+                    href="/honey/#traceability"
+                    className="inline-flex items-center justify-center gap-3 rounded-full border border-asili-green/15 bg-white/60 px-8 py-4 text-sm font-bold text-asili-green backdrop-blur hover:border-asili-honey"
+                  >
+                    See how we verify it
                   </a>
                 </div>
-              </FadeIn>
-            </div>
-          </Section>
-
-          {/* The Glass Hive Section */}
-          <Section id="glass-hive-concept" className="bg-asili-green text-white overflow-hidden relative">
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
-            <div className="max-w-7xl mx-auto relative z-10">
-              <div className="grid lg:grid-cols-2 gap-20 items-center mb-20">
-                <GlassHiveDashboard />
-                <FadeIn delay={0.2}>
-                  <div className="space-y-10">
-                    <div className="inline-block px-4 py-1.5 rounded-full bg-asili-honey/10 border border-asili-honey/20 text-asili-honey text-[10px] font-bold uppercase tracking-widest">Scientific Provenance</div>
-                    <h3 className="text-3xl sm:text-5xl font-bold leading-tight uppercase font-sans">Verifiable <br /><span className="text-asili-honey italic font-serif">Batch</span> History</h3>
-                    <p className="text-xl text-white/60 leading-relaxed font-light">
-                      We've moved beyond mystery. Every jar of Asili Honey includes a "Batch Passport"—a digital breakdown of the weather patterns, moisture analysis, and KeBS certification unique to its harvest season.
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-8">
-                      {[
-                        { title: "Season Profiles", desc: "120-day historical weather mapping for every batch.", icon: <Globe className="text-asili-honey" /> },
-                        { title: "Refractometer Proof", desc: "Strict verification of <18% moisture for premium shelf-life.", icon: <Droplets className="text-asili-honey" /> },
-                        { title: "KeBS Verified", desc: "Direct access to S-Mark permits and purity analysis.", icon: <Award className="text-asili-honey" /> },
-                        { title: "Transparent Ledger", desc: "A verifiable record of origin, from Makueni to you.", icon: <Search className="text-asili-honey" /> }
-                      ].map((feature, i) => (
-                        <div key={i} className="space-y-3">
-                          <div className="text-asili-honey">{feature.icon}</div>
-                          <h4 className="font-bold text-lg">{feature.title}</h4>
-                          <p className="text-xs text-white/40 leading-relaxed">{feature.desc}</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </FadeIn>
-              </div>
-            </div>
-          </Section>
-
-          {/* Foundation Section */}
-          <Section id="foundation" className="bg-white relative overflow-hidden">
-            <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-              <FadeIn>
-                <div className="space-y-8">
-                  <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold text-asili-green leading-tight">Beyond <br /><span className="text-asili-honey italic font-serif">Purity</span></h2>
-                  <div className="space-y-6 text-lg text-asili-green/70 leading-relaxed font-light">
-                    <p>In a market where "purity" is a cliché, Asili defines a new standard through RADICAL TRACEABILITY. We don't just put a sticker on a jar; we provide a link to the life of the hive.</p>
-                    <p>Our Hub-and-Spoke model scale impact by providing tech and high-yield 'Obadoni' protocols to local farmers in Makueni, buying back their gold and ensuring KeBS-certified integrity.</p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-8 pt-6 border-t border-asili-honey/10">
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-asili-honey/10 flex items-center justify-center text-asili-honey"><Droplets className="w-5 h-5" /></div>
-                      <div>
-                        <p className="font-bold text-asili-green">Hub & Spoke</p>
-                        <p className="text-xs opacity-50">Aggregated Scaling</p>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-asili-honey/10 flex items-center justify-center text-asili-honey"><Search className="w-5 h-5" /></div>
-                      <div>
-                        <p className="font-bold text-asili-green">The Glass Hive</p>
-                        <p className="text-xs opacity-50">Real-Time Integrity</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </FadeIn>
-              <div className="relative group">
-                <div className="absolute -inset-4 bg-asili-honey/10 rounded-[4rem] rotate-3 scale-95 group-hover:rotate-0 transition-transform duration-700"></div>
-                <HeritageIllustration />
-              </div>
-            </div>
-          </Section>
-
-          {/* Brand Catalogue */}
-          <Section id="catalogue" className="bg-asili-cream/50">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-16">
-                <FadeIn>
-                  <span className="text-asili-honey font-bold uppercase tracking-widest mb-4 block">Visionary Portfolio</span>
-                  <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-6 text-asili-green uppercase break-words">The Asili Ecosystem</h2>
-                  <p className="text-asili-green/60 max-w-2xl mx-auto text-xl">From superfoods to future tech—explore how we are building a sustainable future.</p>
-                </FadeIn>
-              </div>
-              <CatalogueTabs data={BRAND_CATALOGUE} theme="nature" />
-            </div>
-          </Section>
-
-          <Section id="baas-info" className="bg-asili-cream border-y border-asili-honey/10">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-20">
-                <FadeIn>
-                  <span className="text-asili-honey font-bold uppercase tracking-widest text-xs mb-4 block">A New Business Model</span>
-                  <h2 className="text-3xl sm:text-5xl lg:text-6xl font-bold mb-6 text-asili-green uppercase tracking-tighter">Bee-as-a-Service (BaaS)</h2>
-                  <p className="text-asili-green/60 max-w-2xl mx-auto text-xl italic">"Predictable cash flow meeting radical direct impact."</p>
-                </FadeIn>
-              </div>
-              
-              <div className="grid lg:grid-cols-2 gap-8 lg:gap-12">
-                <FadeIn>
-                  <div className="h-full p-10 lg:p-16 rounded-[4rem] bg-white border border-asili-honey/10 hover:shadow-2xl transition-all duration-700">
-                    <div className="w-16 h-16 rounded-2xl bg-asili-honey/10 flex items-center justify-center text-asili-honey mb-10">
-                      <Heart className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-3xl font-bold text-asili-green mb-6">Adopt-A-Hive (B2C)</h3>
-                    <p className="text-lg text-asili-green/70 mb-10 leading-relaxed font-light">
-                      Rent a hive in Makueni for a yearly fee. Enjoy 10kg of the finest harvest branded as your "Private Reserve," while receiving monthly digital updates on your colony's health.
-                    </p>
-                    <ul className="space-y-4">
-                      {["10kg Guaranteed Harvest", "Monthly Bee Updates", "Branded Private Reserve", "Personalized Hive Plaque"].map((item, i) => (
-                        <li key={i} className="flex items-center gap-3 text-sm font-bold text-asili-green/60">
-                          <Leaf className="w-4 h-4 text-asili-honey" /> {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </FadeIn>
-                
-                <FadeIn delay={0.2}>
-                  <div className="h-full p-10 lg:p-16 rounded-[4rem] bg-asili-green text-white hover:shadow-2xl transition-all duration-700">
-                    <div className="w-16 h-16 rounded-2xl bg-white/10 flex items-center justify-center text-asili-honey mb-10">
-                      <Globe className="w-8 h-8" />
-                    </div>
-                    <h3 className="text-3xl font-bold mb-6">Corporate CSR (B2B)</h3>
-                    <p className="text-lg text-white/70 mb-10 leading-relaxed font-light">
-                      Sponsor "Pollination Zones" to meet your SDG targets. We provide branded, KeBS-certified honey for your VIP clients and impact data for your annual CSR reports.
-                    </p>
-                    <ul className="space-y-4">
-                      {["SDG Impact Reporting", "Premium Client Gifting", "Pollination Area Brading", "Tax-Deductible CSR"].map((item, i) => (
-                        <li key={i} className="flex items-center gap-3 text-sm font-bold text-white/40">
-                          <Zap className="w-4 h-4 text-asili-honey" /> {item}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </FadeIn>
-              </div>
-            </div>
-          </Section>
-
-          {/* Impact Metrics */}
-          <Section id="impact" className="bg-[#fbfcfa]">
-            <div className="max-w-7xl mx-auto">
-              <div className="text-center mb-12 lg:mb-20">
-                <FadeIn>
-                  <span className="text-asili-green font-bold uppercase tracking-widest text-xs mb-4 block">The Asili Effect</span>
-                  <h2 className="text-4xl lg:text-5xl font-bold mb-6 text-asili-green leading-tight">Empowering People, <br className="hidden md:block" /><span className="text-asili-honey italic">Restoring the Planet.</span></h2>
-                </FadeIn>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 md:gap-12">
-                {IMPACT_METRICS.map((metric, i) => (
-                  <FadeIn key={i} delay={i * 0.1}>
-                    <div className={cn(
-                      "group p-12 rounded-[3rem] h-full border flex flex-col items-center text-center transition-all duration-500 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.05)]", 
-                      metric.color
-                    )}>
-                      <div className="mb-8 p-6 rounded-3xl bg-white shadow-sm group-hover:scale-110 transition-transform duration-500">
-                        {metric.icon}
-                      </div>
-                      <h3 className="text-3xl font-bold mb-2">{metric.title}</h3>
-                      <p className="text-xs font-bold uppercase tracking-widest mb-6 opacity-60 italic">{metric.subtitle}</p>
-                      <p className="text-sm leading-relaxed mb-10 opacity-70 flex-grow">{metric.description}</p>
-                      <div className="w-full space-y-3">
-                        {metric.metrics.map((m, idx) => (
-                          <div key={idx} className="flex items-center justify-between text-xs font-bold py-3 border-t border-current opacity-30 group-hover:opacity-100 transition-opacity">
-                            <span>{m}</span>
-                            <ChevronRight className="w-3 h-3" />
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </FadeIn>
-                ))}
-              </div>
-            </div>
-          </Section>
-
-          {/* Partnerships Section */}
-          <Section id="partners" className="bg-asili-cream border-t border-asili-honey/10">
-            <div className="max-w-7xl mx-auto">
-              <div className="grid lg:grid-cols-2 gap-20 items-center">
-                <FadeIn>
-                  <h2 className="text-5xl font-bold mb-10 text-asili-green leading-tight">Join the <br /><span className="text-asili-honey underline decoration-asili-honey/30 underline-offset-8">Eco-Wellness Revolution</span></h2>
-                  <p className="text-xl text-asili-green/70 mb-12 leading-relaxed">We are seeking strategic partners and visionary investors to scale our impact across the African continent and beyond.</p>
-                  <div className="space-y-6">
-                    {PARTNERS_CONTENT.map((item, i) => (
-                      <div key={i} className="flex gap-6 items-start">
-                        <div className="w-1.5 h-12 bg-asili-honey rounded-full mt-1"></div>
-                        <div>
-                          <h4 className="font-bold text-xl text-asili-green flex items-center gap-3">
-                            {item.title} <span className="text-[10px] uppercase tracking-widest bg-asili-honey/10 px-2 py-1 rounded text-asili-honey">{item.value}</span>
-                          </h4>
-                          <p className="text-asili-green/60 text-sm mt-2">{item.desc}</p>
-                          {item.title === "Strategic Investors" && (
-                            <a href="https://vc4a.com" target="_blank" rel="noopener noreferrer" className="text-[10px] font-bold uppercase tracking-widest text-asili-honey flex items-center gap-2 mt-4 hover:underline">
-                              View VC4A Profile <ArrowRight size={12} />
-                            </a>
-                          )}
-                          {item.title === "Individual Supporters" && (
-                            <a href="#catalogue" className="text-[10px] font-bold uppercase tracking-widest text-asili-honey flex items-center gap-2 mt-4 hover:underline">
-                              Explore Subscription Models <ArrowRight size={12} />
-                            </a>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </FadeIn>
-                <div className="relative">
-                  <div className="absolute -inset-4 bg-asili-honey/10 rounded-[3rem] blur-2xl"></div>
-                  <div className="relative bg-white border border-asili-honey/10 p-12 rounded-[3.5rem] shadow-2xl">
-                    <h3 className="text-2xl font-bold mb-8 text-asili-green">Partnership Inquiry</h3>
-                    <form className="space-y-6" onSubmit={(e) => handleContactSubmit(e, "Partnership")}>
-                      <div className="grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Full Name</label>
-                          <input name="name" required type="text" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all" />
-                        </div>
-                        <div className="space-y-2">
-                          <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Email Address</label>
-                          <input name="email" required type="email" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Organization</label>
-                        <input name="company" type="text" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all" />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Phone Number</label>
-                        <input name="phone" type="tel" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all" placeholder="+254..." />
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Your Interest</label>
-                        <select name="interest" className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all appearance-none cursor-pointer">
-                          <option>Equity Investment</option>
-                          <option>International Distribution</option>
-                          <option>R&D Collaboration</option>
-                          <option>Bulk Supply</option>
-                        </select>
-                      </div>
-                      <div className="space-y-2">
-                        <label className="text-[10px] font-bold uppercase tracking-widest text-asili-green/40 ml-1">Message / Requirements</label>
-                        <textarea name="message" rows={4} className="w-full bg-asili-cream border border-asili-honey/10 rounded-2xl px-6 py-4 focus:border-asili-green outline-none transition-all resize-none" placeholder="Tell us more about your inquiry..."></textarea>
-                      </div>
-                      <button 
-                        disabled={formStatus === "submitting"}
-                        className="w-full bg-asili-green text-white font-bold py-5 rounded-2xl shadow-xl hover:bg-asili-leaf transition-all flex items-center justify-center gap-3 disabled:opacity-50"
-                      >
-                        {formStatus === "submitting" ? "Sending..." : formStatus === "success" ? "Message Sent!" : "Send Inquiry"}
-                        {(formStatus === "idle" || formStatus === "error") && <ArrowRight className="w-5 h-5" />}
-                      </button>
-                      <button 
-                        type="button"
-                        onClick={() => openWhatsApp("Partnership Inquiry")}
-                        className="w-full border border-asili-green/10 text-asili-green font-bold py-5 rounded-2xl hover:bg-asili-cream transition-all flex items-center justify-center gap-3"
-                      >
-                        Quick Connect on WhatsApp <Zap className="w-5 h-5 text-asili-honey" />
-                      </button>
-                      {formStatus === "error" && <p className="text-red-500 text-xs text-center">Failed to send message. Please try again.</p>}
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </Section>
-
-          {/* Fundability / Why Asili */}
-          <Section id="roadmap" className="bg-asili-green text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-asili-honey/10 blur-[150px] -mr-64 -mt-64 rounded-full"></div>
-            <div className="max-w-3xl mx-auto relative z-10">
-              <FadeIn>
-                <div className="bg-white/5 backdrop-blur-xl p-8 md:p-16 rounded-[4rem] border border-white/10 shadow-2xl">
-                  <h3 className="text-3xl sm:text-5xl font-bold mb-12 text-asili-honey text-center uppercase tracking-tight">Why Asili?</h3>
-                  <div className="grid gap-6">
-                    {FUNDABILITY_CARDS.map((card, i) => (
-                      <div key={i} className="flex gap-6 items-center p-6 bg-white/5 rounded-3xl border border-white/10 hover:bg-white/10 transition-all group">
-                        <div className="p-4 bg-asili-honey/10 rounded-2xl text-asili-honey group-hover:bg-asili-honey group-hover:text-asili-green transition-colors">
-                          {React.cloneElement(card.icon as React.ReactElement, { size: 24 })}
-                        </div>
-                        <div>
-                          <p className="font-bold text-xl mb-1">{card.title}</p>
-                          <p className="text-sm text-white/50 font-light">{card.desc}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </FadeIn>
-            </div>
-          </Section>
-        </main>
-      ) : (
-        /* LUXURY (HONEY) VIEW */
-        <main className="pt-20">
-          {/* Honey Hero */}
-          <section className="relative h-screen flex items-center justify-center overflow-hidden pt-16">
-            <div className="absolute inset-0 z-0">
-              <LuxuryHeroIllustration />
-              <div className="absolute inset-0 bg-gradient-to-b from-asili-black via-transparent to-asili-black"></div>
-            </div>
-
-            <div className="relative z-10 text-center max-w-5xl px-6">
-              <motion.div
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ duration: 1.2, ease: "easeOut" }}
-              >
-                <div className="inline-block px-4 py-1 rounded-full border border-asili-gold/30 bg-asili-gold/5 mb-8 backdrop-blur-sm">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.4em] text-asili-gold">The Purest Gold Range</span>
-                </div>
-                <h1 className="text-4xl sm:text-8xl lg:text-[10rem] font-bold mb-10 leading-[1] md:leading-[0.85] gold-gradient title-spacing hero-text-shadow-gold text-center">
-                  Glass <br />
-                  <span className="italic font-serif text-asili-cream brightness-110 uppercase tracking-tighter">Hive™</span>
-                </h1>
-                <p className="text-lg md:text-2xl text-asili-cream/70 max-w-2xl mx-auto mb-14 leading-relaxed font-light text-center">
-                  The only honey you can watch being made. <br className="hidden md:block" />
-                  <span className="opacity-50 text-sm md:text-lg italic mt-4 block">Radical Traceability • Batch Verified • Pure Makueni Gold</span>
-                </p>
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6">
-                  <button 
-                    onClick={() => openWhatsApp("Reserving a Batch")}
-                    className="w-full sm:w-auto bg-asili-gold text-asili-black px-12 py-5 rounded-full font-black uppercase tracking-widest text-sm hover:scale-105 transition-all shadow-[0_0_50px_rgba(212,175,55,0.4)]"
-                  >
-                    Reserve Batch
-                  </button>
-                  <a 
-                    href="#maturity"
-                    className="w-full sm:w-auto border border-asili-gold/20 text-asili-gold px-12 py-5 rounded-full font-black uppercase tracking-widest text-sm hover:bg-asili-gold/5 transition-all backdrop-blur-md text-center"
-                  >
-                    Explore Standards
-                  </a>
-                </div>
-              </motion.div>
-            </div>
-            
-            {/* Scroll Indicator */}
-            <motion.div 
-              animate={{ y: [0, 10, 0] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2"
-            >
-              <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-asili-gold/40">Scroll</span>
-              <div className="w-px h-12 bg-gradient-to-b from-asili-gold/40 to-transparent"></div>
-            </motion.div>
-          </section>
-
-          {/* The Asili Manifesto & Goal */}
-          <Section id="manifesto" className="bg-asili-black border-y border-asili-gold/10">
-            <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-16 items-center">
-              <FadeIn>
-                <div className="space-y-8">
-                  <div>
-                    <span className="text-asili-gold font-mono text-xs uppercase tracking-[0.3em] mb-4 block underline decoration-asili-gold/30 underline-offset-8">Our Vision</span>
-                    <h2 className="text-3xl sm:text-5xl font-bold gold-gradient leading-tight">From Sugar Scares to <br /><span className="text-asili-cream font-serif italic">Radical Trust.</span></h2>
-                  </div>
-                  <p className="text-xl text-asili-cream/70 leading-relaxed font-light">
-                    In a market flooded with sugar-syrup and "cliché purity," Asili exists to prove that high-integrity honey isn't just a product—it's a technological commitment. 
-                  </p>
-                  <p className="text-asili-cream/50 leading-relaxed">
-                    Our goal is to eliminate the 'Is this real?' doubt by providing every consumer with a digital window into the hive, a KeBS-certified COA, and a direct line to the dry-land beauty of Makueni.
-                  </p>
-                  <div className="grid grid-cols-2 gap-8 pt-8 border-t border-asili-gold/10">
-                    <div>
-                      <h4 className="text-asili-gold font-bold mb-2">The Mission</h4>
-                      <p className="text-xs text-asili-cream/40 leading-relaxed uppercase tracking-tighter">Unlocking the medicinal potential of indigenous flora through rigorous scientific standards.</p>
-                    </div>
-                    <div>
-                      <h4 className="text-asili-gold font-bold mb-2">The Goal</h4>
-                      <p className="text-xs text-asili-cream/40 leading-relaxed uppercase tracking-tighter">Establishing the first verifiable Quality Hub for African gold exports.</p>
-                    </div>
-                  </div>
-                </div>
-              </FadeIn>
-              <div className="relative group">
-                <div className="absolute -inset-4 bg-asili-gold/10 rounded-[3rem] blur-2xl group-hover:bg-asili-gold/20 transition-all"></div>
-                <ResearchIllustration />
-              </div>
-            </div>
-          </Section>
-
-          {/* The Glass Hive Interactive Concept */}
-          <Section id="glass-hive-concept" className="bg-asili-dark text-white overflow-hidden relative">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,#d4af3715_0%,transparent_50%)]"></div>
-            <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-              <FadeIn className="order-2 lg:order-1">
-                <div className="grid sm:grid-cols-2 gap-8">
+                <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-asili-green/10 pt-6">
                   {[
-                    { title: "QR Evidence", desc: "Batch-specific QR codes on every gold-capped jar.", icon: <Search className="text-asili-gold" /> },
-                    { title: "Hub Testing", desc: "KeBS & refractometer moisture checking at source.", icon: <Droplets className="text-asili-gold" /> },
-                    { title: "Live Ledger", desc: "Digital records of farmer income & hive health.", icon: <TrendingUp className="text-asili-gold" /> },
-                    { title: "Direct Connect", desc: "WhatsApp updates for Adopt-a-Hive partners.", icon: <Mail className="text-asili-gold" /> }
-                  ].map((feature, i) => (
-                    <div key={i} className="p-8 bg-asili-black border border-asili-gold/10 rounded-3xl hover:border-asili-gold/50 transition-all">
-                      <div className="mb-4">{feature.icon}</div>
-                      <h4 className="font-bold text-asili-cream mb-2">{feature.title}</h4>
-                      <p className="text-xs text-asili-cream/40 leading-relaxed">{feature.desc}</p>
+                    ["Makueni", "Sourced in Kenya"],
+                    ["Honey first", "One focused offer"],
+                    ["In rollout", "Batch passports"],
+                  ].map(([value, label]) => (
+                    <div key={value}>
+                      <span className="block text-sm font-bold text-asili-green">{value}</span>
+                      <span className="mt-1 block text-[9px] font-bold uppercase tracking-wider text-asili-green/45">{label}</span>
                     </div>
                   ))}
                 </div>
               </FadeIn>
-              <FadeIn className="order-1 lg:order-2">
-                <div className="space-y-8">
-                  <h2 className="text-3xl sm:text-5xl font-bold leading-tight gold-gradient italic">The Standards of <br />The Glass Hive™</h2>
-                  <p className="text-xl text-asili-cream/70 font-light leading-relaxed">
-                    "We don't sell honey; we sell the proof of its purity."
-                  </p>
-                  <p className="text-asili-cream/50 leading-relaxed">
-                    By integrating verifiable batch passports and 120-day seasonal data, Asili creates a 'Glass Hive' experience. You see the harvest date, the moisture content, and the specific seasonal climate unique to your jar of honey.
-                  </p>
-                </div>
-              </FadeIn>
             </div>
-          </Section>
+            <FadeIn delay={0.15} className="lg:pl-4">
+              <HoneyJarIllustration />
+            </FadeIn>
+          </div>
+        </section>
 
-          {/* Subscription Box UI */}
-          <section className="py-12 bg-asili-gold/5 border-y border-asili-gold/10 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-asili-gold/10 blur-3xl -mr-16 -mt-16"></div>
-            <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-8 relative z-10">
-              <div>
-                <h3 className="text-2xl font-bold text-asili-gold mb-2 flex items-center gap-2">
-                  <Package className="w-5 h-5" /> Bee-as-a-Service (BaaS)
-                </h3>
-                <p className="text-asili-cream/60">"Adopt-a-Hive" for guaranteed harvests and monthly digital 'Bee Updates'. Predictable impact, premium purity.</p>
-              </div>
-              <div className="flex gap-4">
-                <div className="px-4 py-3 bg-asili-dark border border-asili-gold/20 rounded-xl text-sm flex flex-col">
-                  <span className="text-asili-gold font-bold">10kg Harvest</span>
-                  <span className="text-[10px] text-asili-cream/40 uppercase tracking-widest">Your Private Reserve</span>
-                </div>
-                <button 
-                  onClick={() => openWhatsApp("Adopt a Hive / BaaS Subscription")}
-                  className="bg-asili-gold text-asili-black px-8 py-3 rounded-xl font-bold text-sm shadow-[0_0_20px_rgba(212,175,55,0.2)] hover:bg-asili-gold-light transition-all"
-                >
-                  Adopt a Hive
-                </button>
-              </div>
-            </div>
-          </section>
-
-          {/* Honey Maturity & Purity */}
-          <Section id="maturity" className="bg-asili-black">
-            <div className="grid md:grid-cols-2 gap-20 items-center">
-              <FadeIn>
-                <h2 className="text-3xl sm:text-5xl font-bold mb-8 gold-gradient">Scientific Purity. <br />Nature's Patience.</h2>
-                <div className="space-y-8">
-                  <div>
-                    <h4 className="text-asili-gold font-bold text-xl mb-2 flex items-center gap-2">
-                      <TrendingUp className="w-5 h-5" /> The Refractometer Test
-                    </h4>
-                    <p className="text-asili-cream/60 leading-relaxed">
-                      We harvest only when the bees cap the honey, ensuring a moisture content below 17%. Every batch is tested with clinical refractometers to guarantee stability and prevent fermentation.
-                    </p>
-                  </div>
-                  <div>
-                    <h4 className="text-asili-gold font-bold text-xl mb-2 flex items-center gap-2">
-                      <Droplets className="w-5 h-5" /> The Quality Hub
-                    </h4>
-                    <p className="text-asili-cream/60 leading-relaxed">
-                      Asili acts as a central Quality Hub. We perform rigorous testing—from KeBS certification to internal refractometer analysis—for every drop of honey harvested from our 'Spoke' farmers in the Makueni ecosystem.
-                    </p>
-                  </div>
-                  <div className="pt-8 grid grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-asili-gold/5 border border-asili-gold/10 rounded-2xl">
-                      <p className="text-asili-gold font-bold text-lg">17%</p>
-                      <p className="text-[8px] uppercase tracking-widest text-asili-cream/40">Max Moisture</p>
-                    </div>
-                    <div className="text-center p-4 bg-asili-gold/5 border border-asili-gold/10 rounded-2xl">
-                      <p className="text-asili-gold font-bold text-lg">KeBS</p>
-                      <p className="text-[8px] uppercase tracking-widest text-asili-cream/40">Verified Batch</p>
-                    </div>
-                    <div className="text-center p-4 bg-asili-gold/5 border border-asili-gold/10 rounded-2xl">
-                      <p className="text-asili-gold font-bold text-lg">QR</p>
-                      <p className="text-[8px] uppercase tracking-widest text-asili-cream/40">Digital COA</p>
-                    </div>
-                  </div>
-                  <p className="text-asili-cream/60 leading-relaxed pt-8 border-t border-asili-gold/10">
-                    Unlike industrial honey that is "flash-heated," Asili honey is cold-settled. This preserves the natural enzymes, diastase, and floral notes that define truly mature honey.
-                  </p>
-                </div>
-              </FadeIn>
-              <FadeIn delay={0.2}>
-                <div className="relative p-1 bg-gradient-to-br from-asili-gold/40 to-transparent rounded-[3rem]">
-                  <div className="bg-asili-dark rounded-[3rem] p-12">
-                    <div className="flex items-center gap-4 mb-8">
-                      <div className="w-16 h-16 bg-asili-gold/10 rounded-2xl flex items-center justify-center">
-                        <Search className="text-asili-gold w-8 h-8" />
-                      </div>
-                      <div>
-                        <p className="text-xs text-asili-gold font-mono uppercase tracking-[0.2em]">Quality Report</p>
-                        <p className="text-2xl font-bold">Batch #MK92</p>
-                      </div>
-                    </div>
-                    <div className="space-y-6">
-                      {[
-                        { label: "Moisture Content", val: "16.4%", status: "Optimal" },
-                        { label: "Floral Source", val: "Acacia / Wildflower", status: "Single Origin" },
-                        { label: "Diastase Activity", val: "High", status: "Premium" },
-                        { label: "HMF Levels", val: "Low", status: "Fresh" }
-                      ].map((stat, i) => (
-                        <div key={i} className="flex justify-between items-center pb-4 border-b border-asili-gold/10">
-                          <div>
-                            <p className="text-sm font-medium">{stat.label}</p>
-                            <p className="text-xs text-asili-cream/40">{stat.status}</p>
-                          </div>
-                          <span className="text-asili-gold font-mono font-bold text-lg">{stat.val}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              </FadeIn>
-            </div>
-          </Section>
-
-          {/* Functional Alchemy Section */}
-          <Section id="functional-alchemy" className="bg-asili-black text-white py-32">
-            <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-20 items-center">
-              <FadeIn>
-                <div className="relative group">
-                  <div className="absolute -inset-10 bg-asili-gold/10 blur-[120px] rounded-full opacity-30"></div>
-                  <AlchemyIllustration />
-                </div>
-              </FadeIn>
-              
-              <FadeIn delay={0.2}>
-                <div className="space-y-10">
-                  <span className="text-asili-gold font-mono text-xs uppercase tracking-widest block">Beyond Nutrition</span>
-                  <h2 className="text-3xl sm:text-6xl font-bold leading-tight gold-gradient italic">Functional <br />Alchemy</h2>
-                  <p className="text-xl text-asili-cream/70 font-light leading-relaxed">
-                    We've shifted from being a honey seller to a "Functional Food" provider. Asili honey isn't just a sweetener—it's a performance fuel and a clinical healer.
-                  </p>
-                  <div className="space-y-6">
-                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-asili-gold mb-2 uppercase text-xs tracking-widest">Performance Fuel</h4>
-                      <p className="text-sm text-asili-cream/50">Used by athletes for sustained energy release without the insulin spike of refined sugars.</p>
-                    </div>
-                    <div className="p-6 bg-white/5 rounded-2xl border border-white/10">
-                      <h4 className="font-bold text-asili-gold mb-2 uppercase text-xs tracking-widest">Clinical Grade</h4>
-                      <p className="text-sm text-asili-cream/50">High-diastase raw honey used for its potent antibacterial and digestive properties.</p>
-                    </div>
-                  </div>
-                </div>
-              </FadeIn>
-            </div>
-          </Section>
-
-          {/* Luxury Catalogue */}
-          <Section id="honey-catalogue" className="bg-asili-dark/50">
-            <div className="max-w-6xl mx-auto">
-              <div className="text-center mb-16">
-                <FadeIn>
-                  <span className="text-asili-gold font-mono text-sm tracking-widest uppercase mb-4 block underline decoration-asili-gold/40 underline-offset-8">The Gold Collection</span>
-                  <h2 className="text-3xl sm:text-5xl md:text-6xl font-bold mb-4 gold-gradient italic text-center">Crafted with Intent</h2>
-                  <p className="text-asili-cream/60 max-w-2xl mx-auto text-lg font-light">From clinical tinctures to artisanal infusions, explore the full depth of the Asili hive.</p>
-                </FadeIn>
-              </div>
-              <CatalogueTabs data={HONEY_CATALOGUE} theme="luxury" />
-            </div>
-          </Section>
-
-          {/* Traceability */}
-          <Section id="traceability" className="bg-asili-black relative overflow-hidden">
-            <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-5"></div>
-            <div className="max-w-6xl mx-auto relative z-10">
-              <div className="text-center mb-20">
-                <FadeIn>
-                  <h2 className="text-3xl sm:text-5xl font-bold mb-4 gold-gradient">Farm-to-Jar DNA</h2>
-                  <p className="text-asili-cream/60">Total transparency from the Makueni plains to your ritual.</p>
-                </FadeIn>
-              </div>
-              
-              <div className="grid md:grid-cols-4 gap-8">
-                {[
-                  { icon: <Home />, label: "Origin", val: "Makueni, Kenya", desc: "Arid Acacia flora for high medicinal potency." },
-                  { icon: <Leaf />, label: "Harvested", val: "Seasonal Lots", desc: "Exact hive and date verified via your QR code." },
-                  { icon: <Zap />, label: "Testing", val: "KeBS Certified", desc: "Batch tested for under 17% moisture content." },
-                  { icon: <Users />, label: "Impact", val: "Direct Local Trade", desc: "Eliminating middlemen to support forest growth." }
-                ].map((step, i) => (
-                  <FadeIn key={i} delay={i * 0.1}>
-                    <div className="text-center group">
-                      <div className="w-16 h-16 bg-asili-gold/10 rounded-full flex items-center justify-center mx-auto mb-6 border border-asili-gold/20 group-hover:bg-asili-gold group-hover:text-asili-black transition-all">
-                        {step.icon}
-                      </div>
-                      <h4 className="text-asili-gold font-bold mb-2 uppercase tracking-widest text-xs">{step.label}</h4>
-                      <p className="text-xl font-bold mb-1">{step.val}</p>
-                      <p className="text-sm text-asili-cream/40">{step.desc}</p>
-                    </div>
-                  </FadeIn>
-                ))}
-              </div>
-            </div>
-          </Section>
-
-          {/* B2B / Bulk */}
-          <Section id="b2b" className="bg-asili-dark border-t border-asili-gold/10">
-            <div className="grid lg:grid-cols-2 gap-16 items-center">
-              <FadeIn>
-                <h2 className="text-5xl font-bold mb-8 gold-gradient italic">Enterprise Supply</h2>
-                <p className="text-xl text-asili-cream/70 mb-10 leading-relaxed font-light">
-                  Supplying certified raw materials—Bee Venom, Bee Pollen, and Bulk Honey—to the global pharmaceutical, cosmetic, and wellness sectors.
+        <Section id="honey" className="bg-white">
+          <div className="grid items-center gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
+            <FadeIn>
+              <div className="relative overflow-hidden rounded-[3rem] bg-asili-green p-8 text-white sm:p-12">
+                <div className="absolute -right-20 -top-20 h-52 w-52 rounded-full border-[30px] border-asili-honey/10" />
+                <span className="relative text-[9px] font-black uppercase tracking-[0.3em] text-asili-honey">Available now</span>
+                <h2 className="relative mt-5 text-4xl font-bold sm:text-5xl">Asili Raw Makueni Honey</h2>
+                <p className="relative mt-5 max-w-xl leading-relaxed text-white/70">
+                  A honey-first beginning for Asili: locally rooted, carefully handled, and offered with a commitment to clearer origin information.
                 </p>
-                <div className="grid gap-6">
-                  <div className="flex gap-4 p-6 bg-asili-gold/5 rounded-2xl border border-asili-gold/10">
-                    <Rocket className="w-10 h-10 text-asili-gold flex-shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-xl mb-1">Scalable Exports</h4>
-                      <p className="text-asili-cream/50 text-sm">Targeting Diaspora markets in EU, US, and UAE with certified organic exports.</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 p-6 bg-asili-gold/5 rounded-2xl border border-asili-gold/10">
-                    <Award className="w-10 h-10 text-asili-gold flex-shrink-0" />
-                    <div>
-                      <h4 className="font-bold text-xl mb-1">Quality Assurance</h4>
-                      <p className="text-asili-cream/50 text-sm">Rigorous COA (Certificate of Analysis) provided for every bulk transaction.</p>
-                    </div>
-                  </div>
+                <div className="relative mt-8 flex flex-wrap gap-2">
+                  {["Makueni origin", "Everyday pantry staple", "Order directly on WhatsApp"].map((item) => (
+                    <span key={item} className="rounded-full border border-white/15 bg-white/5 px-4 py-2 text-[10px] font-bold uppercase tracking-wider text-white/80">
+                      {item}
+                    </span>
+                  ))}
                 </div>
-              </FadeIn>
-
-              <FadeIn delay={0.2}>
-                <div className="bg-asili-black border border-asili-gold/20 p-10 rounded-[2rem] shadow-2xl">
-                  <h3 className="text-2xl font-bold mb-6 text-asili-gold">B2B Inquiry Form</h3>
-                  <form className="space-y-4" onSubmit={(e) => handleContactSubmit(e, "B2B Supply")}>
-                    <div className="grid grid-cols-2 gap-4">
-                      <input name="name" required type="text" placeholder="Name" className="bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
-                      <input name="email" required type="email" placeholder="Email" className="bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
-                    </div>
-                    <input name="phone" type="tel" placeholder="Phone Number" className="w-full bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
-                    <input name="company" type="text" placeholder="Company / Institution" className="w-full bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all" />
-                    <select name="interest" className="w-full bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all text-asili-cream/50">
-                      <option>Bulk Honey</option>
-                      <option>Medical Bee Venom</option>
-                      <option>Bee Pollen (Pharma Grade)</option>
-                      <option>White Labeling</option>
-                    </select>
-                    <textarea name="requirements" placeholder="Tell us about your requirements..." rows={4} className="w-full bg-asili-dark border border-asili-gold/10 rounded-xl px-4 py-3 focus:border-asili-gold outline-none transition-all"></textarea>
-                    <button 
-                      disabled={formStatus === "submitting"}
-                      className="w-full bg-asili-gold text-asili-black font-bold py-4 rounded-xl shadow-lg hover:shadow-[0_0_30px_rgba(212,175,55,0.3)] transition-all disabled:opacity-50"
-                    >
-                      {formStatus === "submitting" ? "Sending..." : formStatus === "success" ? "Inquiry Sent!" : "Request Institutional Sample"}
-                    </button>
-                    {formStatus === "error" && <p className="text-red-500 text-xs text-center">Failed to send inquiry. Please try again.</p>}
-                  </form>
-                </div>
-              </FadeIn>
-            </div>
-          </Section>
-        </main>
-      )}
-
-      {/* Footer */}
-      <footer className={cn(
-        "py-32 px-6 md:px-12 lg:px-24 border-t relative overflow-hidden transition-colors duration-700",
-        view === "luxury" ? "bg-asili-black text-asili-cream border-asili-gold/10" : "bg-asili-green text-white border-white/5"
-      )}>
-        <div className="max-w-7xl mx-auto relative z-10">
-          <div className="grid lg:grid-cols-12 gap-16 md:gap-24 mb-20 text-center md:text-left">
-            <div className="lg:col-span-5 space-y-10">
-              <div className="flex items-center justify-center md:justify-start gap-3">
-                <div className={cn(
-                  "w-12 h-12 rounded-2xl flex items-center justify-center transition-all shadow-xl",
-                  view === "luxury" ? "bg-asili-gold text-asili-black" : "bg-white text-asili-green"
-                )}>
-                  <Leaf className="w-7 h-7" />
-                </div>
-                <span className={cn(
-                  "font-serif text-4xl font-bold tracking-tight transition-colors",
-                  view === "luxury" ? "text-asili-gold" : "text-white"
-                )}>ASILI</span>
               </div>
-              <p className={cn(
-                "text-lg leading-relaxed font-light opacity-60 max-w-md mx-auto md:mx-0",
-                view === "luxury" ? "text-asili-cream" : "text-white"
-              )}>
-                {view === "luxury" 
-                  ? "Bridging African heritage and scientific precision. Single-origin Makueni honey collection, crafted for the luxury wellness ritual."
-                  : "Africa's Eco-Wellness Movement. Bridging African heritage and modern sustainable living through local, indigenous resources."
-                }
+            </FadeIn>
+            <FadeIn delay={0.1}>
+              <div className="mb-5 flex items-center gap-3 text-asili-earth">
+                <Package className="h-5 w-5 text-asili-honey" aria-hidden="true" />
+                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Our flagship product</span>
+              </div>
+              <h2 className="text-4xl font-bold leading-tight text-asili-green sm:text-6xl">
+                One product, explained <span className="italic text-asili-honey">properly.</span>
+              </h2>
+              <p className="mt-6 max-w-2xl text-base leading-relaxed text-asili-green/65">
+                We are starting with honey because focus builds trust. Ask us directly about current jar sizes, prices, availability and delivery—we will confirm what is ready before you order.
               </p>
-              
-              <div className="pt-10 border-t border-white/10">
-                <p className="italic text-xl font-serif leading-relaxed text-white">
-                  "Healing people and the planet by returning to our origins is not just a mission—it is our essence."
-                </p>
-                <p className="mt-4 font-bold text-xs uppercase tracking-widest text-white/50">— Kevin Sila, Founder</p>
-              </div>
-            </div>
-
-            <div className="lg:col-span-3 space-y-8">
-              <h4 className={cn("text-xs font-bold uppercase tracking-widest", view === "luxury" ? "text-asili-gold" : "text-asili-honey")}>Navigate</h4>
-              <nav className="flex flex-col gap-5 text-lg font-light opacity-60">
-                {view === "brand" ? (
-                  <>
-                    <a href="#about" className="hover:opacity-100 transition-opacity">Our Vision</a>
-                    <a href="#foundation" className="hover:opacity-100 transition-opacity">Laboratory</a>
-                    <a href="#catalogue" className="hover:opacity-100 transition-opacity">Product Ecosystem</a>
-                    <a href="#impact" className="hover:opacity-100 transition-opacity">Social Impact</a>
-                    <a href="#partners" className="hover:opacity-100 transition-opacity">Partnership Hub</a>
-                  </>
-                ) : (
-                  <>
-                    <a href="#maturity" className="hover:opacity-100 transition-opacity">Honey Maturity</a>
-                    <a href="#honey-catalogue" className="hover:opacity-100 transition-opacity">Gold Label</a>
-                    <a href="#traceability" className="hover:opacity-100 transition-opacity">Glass Hive™ Lab</a>
-                    <a href="#b2b" className="hover:opacity-100 transition-opacity">Partnership Hub</a>
-                  </>
-                )}
-              </nav>
-            </div>
-
-            <div className="lg:col-span-4 space-y-8">
-              <h4 className={cn("text-xs font-bold uppercase tracking-widest", view === "luxury" ? "text-asili-gold" : "text-asili-honey")}>Connect</h4>
-              <div className="space-y-6">
-                <a href="mailto:kevinsila100@gmail.com" className="group flex items-center justify-center md:justify-start gap-4 hover:translate-x-2 transition-transform">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-                    <Mail className={cn("w-5 h-5", view === "luxury" ? "text-asili-gold" : "text-asili-honey")} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">Email Us</p>
-                    <p className="font-bold opacity-80">kevinsila100@gmail.com</p>
-                  </div>
+              <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+                <a href="/honey/" className="group inline-flex items-center justify-center gap-2 rounded-full bg-asili-honey px-7 py-4 text-sm font-bold text-asili-green">
+                  Explore the honey <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-1" aria-hidden="true" />
                 </a>
-                <a href="https://wa.me/254717578394" target="_blank" rel="noopener noreferrer" className="group flex items-center justify-center md:justify-start gap-4 hover:translate-x-2 transition-transform">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-                    <Zap className={cn("w-5 h-5", view === "luxury" ? "text-asili-gold" : "text-asili-honey")} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">WhatsApp</p>
-                    <p className="font-bold opacity-80">+254 717 578 394</p>
-                  </div>
-                </a>
-                <a href="https://linktr.ee/kevinsila" target="_blank" rel="noopener noreferrer" className="group flex items-center justify-center md:justify-start gap-4 hover:translate-x-2 transition-transform">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center border border-white/10">
-                    <Globe className={cn("w-5 h-5", view === "luxury" ? "text-asili-gold" : "text-asili-honey")} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-widest opacity-40">Connect</p>
-                    <p className="font-bold opacity-80">linktr.ee/kevinsila</p>
-                  </div>
+                <a
+                  href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-full border border-asili-green/15 px-7 py-4 text-sm font-bold text-asili-green"
+                >
+                  Ask about sizes & prices
                 </a>
               </div>
+            </FadeIn>
+          </div>
+        </Section>
+
+        <Section id="story">
+          <div className="grid gap-12 lg:grid-cols-2 lg:gap-20">
+            <FadeIn>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">The story behind Asili</span>
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-asili-green sm:text-6xl">Rooted in origin. Built for trust.</h2>
+            </FadeIn>
+            <FadeIn delay={0.1} className="space-y-5 text-base leading-relaxed text-asili-green/65">
+              <p>
+                “Asili” speaks to origin and essence. The brand was created around a simple belief: products rooted in African landscapes should reach people with their story, source and value intact.
+              </p>
+              <p>
+                Our first chapter begins in Makueni with honey. We are building a focused route from source to customer, while developing practical batch records that can make quality information easier to understand.
+              </p>
+              <p className="border-l-2 border-asili-honey pl-5 font-serif text-xl italic text-asili-green">
+                Start with one honest product. Learn from every batch. Grow without losing the origin.
+              </p>
+            </FadeIn>
+          </div>
+        </Section>
+
+        <Section id="why-asili" className="bg-asili-green text-white">
+          <FadeIn className="mx-auto max-w-3xl text-center">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-honey">What makes Asili different</span>
+            <h2 className="mt-5 text-4xl font-bold sm:text-6xl">Three commitments behind every next step.</h2>
+          </FadeIn>
+          <div className="mt-14 grid gap-5 md:grid-cols-3">
+            {[
+              {
+                icon: <MapPin aria-hidden="true" />,
+                title: "Origin you can name",
+                text: "We lead with Makueni—not a vague ‘natural’ claim—because where a product comes from matters.",
+              },
+              {
+                icon: <ShieldCheck aria-hidden="true" />,
+                title: "Proof before promises",
+                text: "Our traceability tools are presented as a system in rollout, with demo data clearly labelled until real batch records are available.",
+              },
+              {
+                icon: <Users aria-hidden="true" />,
+                title: "Growth that stays connected",
+                text: "We want brand growth to strengthen the route between local producers, quality handling and the people buying each jar.",
+              },
+            ].map((item, index) => (
+              <FadeIn key={item.title} delay={index * 0.08} className="h-full">
+                <article className="h-full rounded-[2.25rem] border border-white/10 bg-white/[0.045] p-8">
+                  <div className="mb-8 flex h-12 w-12 items-center justify-center rounded-2xl bg-asili-honey text-asili-green [&_svg]:h-5 [&_svg]:w-5">
+                    {item.icon}
+                  </div>
+                  <h3 className="text-2xl font-bold">{item.title}</h3>
+                  <p className="mt-4 text-sm leading-relaxed text-white/65">{item.text}</p>
+                </article>
+              </FadeIn>
+            ))}
+          </div>
+        </Section>
+
+        <Section id="origin">
+          <div className="grid gap-12 lg:grid-cols-[0.82fr_1.18fr] lg:gap-20">
+            <FadeIn>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">From Makueni to your table</span>
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-asili-green sm:text-5xl">A clearer journey for every jar.</h2>
+              <p className="mt-5 leading-relaxed text-asili-green/65">
+                This is the process Asili is building around its honey. As the system develops, eligible batches can carry more of this information directly to the customer.
+              </p>
+            </FadeIn>
+            <div className="grid gap-4 sm:grid-cols-2">
+              {[
+                ["01", "Source", "Honey is sourced from the Makueni ecosystem through producer relationships."],
+                ["02", "Handle", "Each batch is received and handled with a consistent quality process."],
+                ["03", "Record", "Origin and quality details are captured as the batch-passport system rolls out."],
+                ["04", "Share", "Customers can ask questions, view available records and order directly."],
+              ].map(([number, title, text], index) => (
+                <FadeIn key={number} delay={index * 0.06}>
+                  <article className="rounded-[2rem] border border-asili-green/10 bg-white p-7 shadow-[0_14px_40px_rgba(26,58,30,0.04)]">
+                    <span className="font-mono text-xs font-bold text-asili-honey">{number}</span>
+                    <h3 className="mt-5 text-2xl font-bold text-asili-green">{title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-asili-green/60">{text}</p>
+                  </article>
+                </FadeIn>
+              ))}
             </div>
           </div>
+        </Section>
 
-          <div className="pt-10 border-t border-current opacity-20 flex flex-col md:flex-row justify-between items-center gap-12 text-[9px] font-bold uppercase tracking-[0.2em] font-sans">
-            <div className="flex flex-col gap-4 text-center md:text-left">
-              <p>© 2026 ASILI ECO-WELLNESS MOVEMENT. ALL RIGHTS RESERVED.</p>
-              <div className="flex flex-wrap justify-center md:justify-start gap-6 text-[7px] text-white/40">
-                <span className="hover:text-asili-gold cursor-help" title="Registration with Office of the Data Protection Commissioner (Kenya)">ODPC Compliant</span>
-                <span className="hover:text-asili-gold cursor-help">GDPR/NDPR Standards</span>
-                <span className="hover:text-asili-gold cursor-help" title="Adherent to Equity/Debt reporting standards">CMA Crowdfunding Reg. (2021) Adherence</span>
-                <span className="hover:text-asili-gold cursor-help" title="KEPROBA verification pending">Make It Kenya™ Verified Hub</span>
-              </div>
+        <Section id="traceability" className="bg-white">
+          <FadeIn>
+            <TraceabilityCard />
+          </FadeIn>
+        </Section>
+
+        <Section id="partners">
+          <div className="grid gap-12 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
+            <FadeIn>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">For buyers, retailers & partners</span>
+              <h2 className="mt-5 text-4xl font-bold leading-tight text-asili-green sm:text-5xl">Help the honey-first model grow.</h2>
+              <p className="mt-5 leading-relaxed text-asili-green/65">
+                Asili is early-stage and focused. We welcome conversations that help us improve distribution, quality systems and producer-linked growth without losing the clarity of the brand.
+              </p>
+              <a
+                href={whatsappUrl("Hello Asili, I would like to discuss a retail, distribution or partnership opportunity.")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-8 inline-flex items-center gap-2 rounded-full bg-asili-green px-7 py-4 text-sm font-bold text-white"
+              >
+                Start a conversation <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </FadeIn>
+            <div className="grid gap-4 sm:grid-cols-3">
+              {[
+                { icon: <Store aria-hidden="true" />, title: "Retail", text: "Stocking and distribution conversations for aligned shops and hospitality partners." },
+                { icon: <Package aria-hidden="true" />, title: "Bulk & gifting", text: "Inquiries for larger honey orders and thoughtful corporate gifting." },
+                { icon: <Sprout aria-hidden="true" />, title: "Growth partners", text: "Strategic support for traceability, processing, market access and producer development." },
+              ].map((item, index) => (
+                <FadeIn key={item.title} delay={index * 0.08} className="h-full">
+                  <article className="h-full rounded-[2rem] border border-asili-green/10 bg-white p-6">
+                    <div className="mb-6 h-6 w-6 text-asili-honey [&_svg]:h-6 [&_svg]:w-6">{item.icon}</div>
+                    <h3 className="text-xl font-bold text-asili-green">{item.title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-asili-green/60">{item.text}</p>
+                  </article>
+                </FadeIn>
+              ))}
             </div>
-            <div className="flex items-center gap-8">
-              <div className="flex items-center gap-3 grayscale brightness-50 opacity-30 hover:grayscale-0 hover:brightness-100 hover:opacity-100 transition-all cursor-pointer">
-                <div className="px-2 py-1 border border-current rounded text-[8px]">KeBS</div>
-                <div className="px-2 py-1 border border-current rounded text-[8px]">KCIC</div>
-              </div>
-              <p>ROOTED IN MAKUENI, KENYA</p>
+          </div>
+        </Section>
+
+        <Section id="faq" className="bg-[#f2efe7]">
+          <div className="grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
+            <FadeIn>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">Common questions</span>
+              <h2 className="mt-5 text-4xl font-bold text-asili-green sm:text-5xl">A few clear answers.</h2>
+            </FadeIn>
+            <div className="divide-y divide-asili-green/10 border-y border-asili-green/10">
+              {[
+                ["What is Asili?", "Asili is a Kenyan eco-wellness brand beginning with Makueni honey and a long-term commitment to origin, responsible sourcing and practical traceability."],
+                ["Where does the honey come from?", "Our current honey story is rooted in Makueni, Kenya. Ask us about the specific availability and source information attached to the jar you want to order."],
+                ["How do I buy it?", "Use any ‘Buy honey’ button to open WhatsApp. We will confirm available sizes, current prices, collection or delivery, and payment details directly."],
+                ["Is the batch passport already live for every jar?", "Not yet. The Glass Hive is being rolled out, so the website clearly labels demo records. Eligible jars will link to real batch information as it becomes available."],
+              ].map(([question, answer]) => (
+                <details key={question} className="group py-5">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-asili-green">
+                    {question}
+                    <ChevronDown className="h-5 w-5 shrink-0 text-asili-honey transition-transform group-open:rotate-180" aria-hidden="true" />
+                  </summary>
+                  <p className="max-w-3xl pb-2 pt-4 text-sm leading-relaxed text-asili-green/65">{answer}</p>
+                </details>
+              ))}
             </div>
+          </div>
+        </Section>
+
+        <Section id="contact" className="bg-white">
+          <div className="grid overflow-hidden rounded-[3rem] border border-asili-green/10 bg-asili-cream shadow-xl lg:grid-cols-[0.85fr_1.15fr]">
+            <div className="bg-asili-green p-8 text-white sm:p-12">
+              <Mail className="h-8 w-8 text-asili-honey" aria-hidden="true" />
+              <h2 className="mt-8 text-4xl font-bold">Let’s talk.</h2>
+              <p className="mt-4 max-w-md text-sm leading-relaxed text-white/65">
+                Tell us whether you want a jar, want to stock Asili honey, or see a way to strengthen the honey-first model.
+              </p>
+              <a
+                href={whatsappUrl("Hello Asili, I would like to make an inquiry.")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-8 inline-flex items-center gap-2 text-sm font-bold text-asili-honey"
+              >
+                Prefer WhatsApp? Message us <ArrowRight className="h-4 w-4" aria-hidden="true" />
+              </a>
+            </div>
+            <div className="p-8 sm:p-12">
+              <ContactForm theme="nature" type="Website" />
+            </div>
+          </div>
+        </Section>
+      </main>
+      <Footer theme="nature" page="home" />
+    </>
+  );
+};
+
+const HoneyPage = () => (
+  <>
+    <Header theme="luxury" page="honey" />
+    <main id="main-content" className="bg-asili-black text-asili-cream">
+      <section className="relative overflow-hidden px-6 pb-20 pt-32 md:px-12 lg:min-h-screen lg:px-24 lg:pb-24 lg:pt-36">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_75%_35%,rgba(212,175,55,0.13),transparent_35%),linear-gradient(to_bottom,#0a0a0a,#10100e)]" />
+        <div className="relative mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_0.95fr] lg:gap-12">
+          <FadeIn>
+            <div className="mb-6 flex items-center gap-3 text-asili-gold">
+              <span className="h-px w-10 bg-asili-gold" />
+              <span className="text-[10px] font-black uppercase tracking-[0.35em]">Asili’s flagship product</span>
+            </div>
+            <h1 className="max-w-4xl text-5xl font-bold leading-[0.96] tracking-[-0.045em] sm:text-6xl lg:text-[5.3rem] xl:text-[6rem]">
+              Raw Makueni honey. <span className="gold-gradient italic">Order it directly.</span>
+            </h1>
+            <p className="mt-7 max-w-2xl text-base leading-relaxed text-asili-cream/65 sm:text-lg">
+              A locally rooted honey for everyday tables, gifting and thoughtful retail—with origin information and batch records being built into the experience.
+            </p>
+            <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+              <a
+                href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group inline-flex items-center justify-center gap-3 rounded-full bg-asili-gold px-8 py-4 text-sm font-black text-asili-black shadow-[0_18px_50px_rgba(212,175,55,0.14)] transition-transform hover:-translate-y-1"
+              >
+                Buy our honey <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+              </a>
+              <a href="#origin" className="inline-flex items-center justify-center rounded-full border border-asili-gold/25 px-8 py-4 text-sm font-bold text-asili-gold hover:bg-asili-gold/5">
+                See origin & handling
+              </a>
+            </div>
+            <p className="mt-5 text-xs text-asili-cream/40">Available sizes, prices and delivery are confirmed on WhatsApp before purchase.</p>
+          </FadeIn>
+          <FadeIn delay={0.15}>
+            <HoneyJarIllustration dark />
+          </FadeIn>
+        </div>
+      </section>
+
+      <Section id="the-honey" className="border-y border-asili-gold/10 bg-asili-dark">
+        <div className="grid gap-12 lg:grid-cols-[0.9fr_1.1fr] lg:gap-20">
+          <FadeIn>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-gold">One flagship product</span>
+            <h2 className="mt-5 text-4xl font-bold leading-tight sm:text-6xl">Honey with a place behind it.</h2>
+            <p className="mt-6 max-w-xl leading-relaxed text-asili-cream/60">
+              Asili begins with honey sourced from the Makueni ecosystem. We are choosing focus over a long catalogue: one product to understand, improve and connect more clearly to its origin.
+            </p>
+          </FadeIn>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {[
+              { icon: <MapPin aria-hidden="true" />, title: "Makueni origin", text: "A clear Kenyan source story—not anonymous ‘natural honey’." },
+              { icon: <Heart aria-hidden="true" />, title: "Everyday use", text: "For tea, breakfast, simple recipes, gifting and the family table." },
+              { icon: <ScanLine aria-hidden="true" />, title: "Traceability in rollout", text: "Batch records are being developed and demo information is labelled honestly." },
+            ].map((item, index) => (
+              <FadeIn key={item.title} delay={index * 0.08} className="h-full">
+                <article className="h-full rounded-[2rem] border border-asili-gold/15 bg-white/[0.035] p-7">
+                  <div className="mb-7 h-6 w-6 text-asili-gold [&_svg]:h-6 [&_svg]:w-6">{item.icon}</div>
+                  <h3 className="text-xl font-bold text-asili-cream">{item.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-asili-cream/55">{item.text}</p>
+                </article>
+              </FadeIn>
+            ))}
           </div>
         </div>
-      </footer>
+      </Section>
+
+      <Section id="origin">
+        <FadeIn className="mx-auto max-w-3xl text-center">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-gold">From source to jar</span>
+          <h2 className="mt-5 text-4xl font-bold sm:text-6xl">What we are working to make visible.</h2>
+          <p className="mt-5 text-sm leading-relaxed text-asili-cream/55 sm:text-base">
+            Good traceability starts with consistent habits. These are the practical information points Asili is developing around eligible honey batches.
+          </p>
+        </FadeIn>
+        <div className="mt-14 grid gap-px overflow-hidden rounded-[2.5rem] border border-asili-gold/10 bg-asili-gold/10 md:grid-cols-4">
+          {[
+            ["01", "Source", "Where the honey was sourced in the Makueni ecosystem."],
+            ["02", "Receive", "When the batch entered Asili’s handling process."],
+            ["03", "Check", "Quality observations such as a moisture reading, where captured."],
+            ["04", "Reference", "A batch ID that can connect an eligible jar to its record."],
+          ].map(([number, title, text]) => (
+            <article key={number} className="bg-asili-black p-7 sm:p-9">
+              <span className="font-mono text-xs font-bold text-asili-gold">{number}</span>
+              <h3 className="mt-8 text-2xl font-bold">{title}</h3>
+              <p className="mt-3 text-sm leading-relaxed text-asili-cream/50">{text}</p>
+            </article>
+          ))}
+        </div>
+      </Section>
+
+      <Section id="traceability" className="bg-asili-dark">
+        <FadeIn>
+          <TraceabilityCard />
+        </FadeIn>
+      </Section>
+
+      <Section id="ways-to-enjoy">
+        <div className="grid items-center gap-12 lg:grid-cols-[1fr_1fr] lg:gap-20">
+          <FadeIn>
+            <div className="relative overflow-hidden rounded-[3rem] border border-asili-gold/15 bg-[radial-gradient(circle_at_25%_20%,rgba(212,175,55,0.16),transparent_35%),#141414] p-9 sm:p-12">
+              <Sparkles className="h-8 w-8 text-asili-gold" aria-hidden="true" />
+              <p className="mt-12 font-serif text-3xl font-bold italic leading-snug text-asili-gold sm:text-4xl">
+                Honey does not need a medical promise to earn a place at the table.
+              </p>
+              <p className="mt-5 text-sm leading-relaxed text-asili-cream/55">Its value begins with taste, origin, care and the people behind it.</p>
+            </div>
+          </FadeIn>
+          <FadeIn delay={0.1}>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-gold">Simple ways to enjoy it</span>
+            <h2 className="mt-5 text-4xl font-bold sm:text-5xl">Made for real routines.</h2>
+            <div className="mt-8 space-y-4">
+              {[
+                ["Morning", "Spoon over fruit, porridge, yoghurt or toast."],
+                ["Drinks", "Stir into tea or warm water after it cools slightly."],
+                ["Kitchen", "Use in dressings, marinades, baking or simple family recipes."],
+                ["Gifting", "Ask about current options for personal and corporate gifts."],
+              ].map(([title, text]) => (
+                <div key={title} className="flex gap-4 border-b border-white/8 pb-4">
+                  <Check className="mt-0.5 h-5 w-5 shrink-0 text-asili-gold" aria-hidden="true" />
+                  <div>
+                    <h3 className="font-bold text-asili-cream">{title}</h3>
+                    <p className="mt-1 text-sm text-asili-cream/50">{text}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </FadeIn>
+        </div>
+      </Section>
+
+      <Section id="faq" className="border-y border-asili-gold/10 bg-asili-dark">
+        <div className="grid gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
+          <FadeIn>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-gold">Before you order</span>
+            <h2 className="mt-5 text-4xl font-bold sm:text-5xl">Honey questions, plainly answered.</h2>
+          </FadeIn>
+          <div className="divide-y divide-white/10 border-y border-white/10">
+            {[
+              ["What sizes and prices are available?", "Availability can change as this honey-first offer develops. Message us on WhatsApp and we will confirm current jar sizes, prices and delivery before you pay."],
+              ["Where is the honey sourced?", "The current Asili honey story is rooted in Makueni, Kenya. Specific source information will be shared where it has been captured for the batch."],
+              ["Does crystallisation mean honey has spoiled?", "No. Crystallisation is a natural change that can happen in honey. Place the closed jar in warm—not boiling—water if you prefer a more liquid texture."],
+              ["Can I buy for a shop or event?", "Yes—use the inquiry form or WhatsApp to discuss retail stocking, bulk orders, events and corporate gifts."],
+            ].map(([question, answer]) => (
+              <details key={question} className="group py-5">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-4 font-bold text-asili-cream">
+                  {question}
+                  <ChevronDown className="h-5 w-5 shrink-0 text-asili-gold transition-transform group-open:rotate-180" aria-hidden="true" />
+                </summary>
+                <p className="max-w-3xl pb-2 pt-4 text-sm leading-relaxed text-asili-cream/55">{answer}</p>
+              </details>
+            ))}
+          </div>
+        </div>
+      </Section>
+
+      <Section id="contact">
+        <div className="grid overflow-hidden rounded-[3rem] border border-asili-gold/15 bg-asili-dark shadow-2xl lg:grid-cols-[0.85fr_1.15fr]">
+          <div className="bg-asili-gold p-8 text-asili-black sm:p-12">
+            <Package className="h-8 w-8" aria-hidden="true" />
+            <h2 className="mt-8 text-4xl font-bold">Order or inquire.</h2>
+            <p className="mt-4 max-w-md text-sm leading-relaxed text-asili-black/65">
+              Tell us what you need. We will confirm availability and the next step directly.
+            </p>
+            <a
+              href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-8 inline-flex items-center gap-2 text-sm font-black"
+            >
+              Order on WhatsApp <ArrowRight className="h-4 w-4" aria-hidden="true" />
+            </a>
+          </div>
+          <div className="p-8 sm:p-12">
+            <ContactForm theme="luxury" type="Honey" />
+          </div>
+        </div>
+      </Section>
+    </main>
+    <Footer theme="luxury" page="honey" />
+  </>
+);
+
+const Footer = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => (
+  <footer
+    className={cn(
+      "border-t px-6 py-14 md:px-12 lg:px-24",
+      theme === "luxury"
+        ? "border-asili-gold/10 bg-asili-black text-asili-cream"
+        : "border-white/5 bg-asili-green text-white",
+    )}
+  >
+    <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.2fr_0.8fr_1fr]">
+      <div>
+        <Logo theme={theme === "nature" ? "luxury" : theme} />
+        <p className={cn("mt-6 max-w-sm text-sm leading-relaxed", theme === "luxury" ? "text-asili-cream/50" : "text-white/60")}>
+          A Kenyan eco-wellness brand beginning with Makueni honey and clearer traceability. Rooted in origin, focused on trust.
+        </p>
+      </div>
+      <div>
+        <h2 className={cn("text-[10px] font-black uppercase tracking-[0.25em]", theme === "luxury" ? "text-asili-gold" : "text-asili-honey")}>Navigate</h2>
+        <div className="mt-5 flex flex-col gap-3 text-sm">
+          <a href={page === "home" ? "#story" : "/#story"} className="opacity-60 hover:opacity-100">Our story</a>
+          <a href="/honey/" className="opacity-60 hover:opacity-100">Our honey</a>
+          <a href={page === "home" ? "#partners" : "/#partners"} className="opacity-60 hover:opacity-100">Partners</a>
+          <a href="#contact" className="opacity-60 hover:opacity-100">Contact</a>
+        </div>
+      </div>
+      <div>
+        <h2 className={cn("text-[10px] font-black uppercase tracking-[0.25em]", theme === "luxury" ? "text-asili-gold" : "text-asili-honey")}>Connect</h2>
+        <div className="mt-5 space-y-4 text-sm">
+          <a href="mailto:kevinsila100@gmail.com" className="flex items-center gap-3 opacity-65 hover:opacity-100">
+            <Mail className="h-4 w-4" aria-hidden="true" /> kevinsila100@gmail.com
+          </a>
+          <a href={WHATSAPP_BASE} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 opacity-65 hover:opacity-100">
+            <Globe className="h-4 w-4" aria-hidden="true" /> +254 717 578 394
+          </a>
+          <a
+            href="https://linktr.ee/kevinsila"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 opacity-65 hover:opacity-100"
+          >
+            <Instagram className="h-4 w-4" aria-hidden="true" /> Social links
+          </a>
+        </div>
+      </div>
+    </div>
+    <div className={cn("mx-auto mt-12 flex max-w-7xl flex-col gap-2 border-t pt-6 text-[9px] uppercase tracking-widest sm:flex-row sm:justify-between", theme === "luxury" ? "border-white/8 text-white/35" : "border-white/10 text-white/40")}>
+      <span>© {new Date().getFullYear()} Asili Eco-Wellness</span>
+      <span>Makueni · Kenya</span>
+    </div>
+  </footer>
+);
+
+const FloatingWhatsApp = ({ theme }: { theme: Theme }) => (
+  <a
+    href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
+    target="_blank"
+    rel="noopener noreferrer"
+    aria-label="Order Asili honey on WhatsApp"
+    className={cn(
+      "fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full px-5 py-3 text-[10px] font-black uppercase tracking-wider shadow-2xl transition-transform hover:-translate-y-1 sm:bottom-7 sm:right-7",
+      theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
+    )}
+  >
+    <span className="h-2 w-2 rounded-full bg-emerald-400" /> Buy honey
+  </a>
+);
+
+export default function App() {
+  const isHoneyPage = window.location.pathname === "/honey" || window.location.pathname.startsWith("/honey/");
+  const theme: Theme = isHoneyPage ? "luxury" : "nature";
+
+  useEffect(() => {
+    document.documentElement.style.colorScheme = isHoneyPage ? "dark" : "light";
+  }, [isHoneyPage]);
+
+  return (
+    <div className={cn("min-h-screen", isHoneyPage ? "bg-asili-black" : "bg-asili-cream")}>
+      <a href="#main-content" className="skip-link">Skip to content</a>
+      {isHoneyPage ? <HoneyPage /> : <HomePage />}
+      <FloatingWhatsApp theme={theme} />
     </div>
   );
 }
