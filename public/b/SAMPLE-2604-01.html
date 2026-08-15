@@ -3,11 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Asili Batch Passport | SAMPLE-2604-01</title>
+    <title>Asili Batch Passport Demo | SAMPLE-2604-01</title>
+    <meta name="robots" content="noindex,nofollow">
     <!-- OpenGraph for WhatsApp/Social Sharing -->
-    <meta property="og:title" content="Asili Honey | Batch SAMPLE-2604-01">
-    <meta property="og:description" content="Verifiable Origin: Makueni Acacia Honey. Moisture: 17.2%">
-    <meta property="og:image" content="https://asilii.netlify.app/og-sample.jpg">
+    <meta property="og:title" content="Asili Honey | Sample Batch Passport">
+    <meta property="og:description" content="A demonstration of the origin and quality fields planned for eligible Asili honey batches.">
     <meta property="og:type" content="website">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -41,6 +41,10 @@
 </head>
 <body class="min-h-screen py-16 px-6 line-pattern">
     <div class="max-w-md mx-auto space-y-10 animate-in fade-in slide-in-from-bottom-5 duration-700">
+        <div class="rounded-2xl border border-[#D4AF37]/30 bg-[#D4AF37]/10 p-4 text-center">
+            <p class="text-[9px] font-black uppercase tracking-[0.25em] gold-text">Demonstration record — not a certificate</p>
+            <p class="mt-2 text-[10px] leading-relaxed text-white/55">The values below are sample content used to show how the Glass Hive passport could work. They do not certify a product or active batch.</p>
+        </div>
         
         <!-- Navbar Branding -->
         <div class="flex justify-center items-center gap-4 group">
@@ -57,7 +61,7 @@
             
             <div class="relative z-10 flex justify-between items-start">
                 <div>
-                    <span class="inline-block px-2 py-0.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded text-[7px] gold-text font-bold uppercase tracking-widest mb-3">Batch Passport v1.0</span>
+                        <span class="inline-block px-2 py-0.5 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded text-[7px] gold-text font-bold uppercase tracking-widest mb-3">Passport Preview v1.0</span>
                     <p class="text-[9px] uppercase tracking-[0.2em] text-white/30 font-bold mb-1">Single-Origin ID</p>
                     <h2 class="text-3xl font-mono font-bold tracking-tighter gold-text">SAMPLE-2604-01</h2>
                 </div>
@@ -78,17 +82,17 @@
                     </div>
                     <div class="flex items-center gap-1.5 pt-1">
                         <div class="w-1.5 h-1.5 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.4)]"></div>
-                        <span class="text-[7px] uppercase font-black tracking-widest text-white/40">Premium Grade Verified</span>
+                        <span class="text-[7px] uppercase font-black tracking-widest text-white/40">Sample quality field</span>
                     </div>
                 </div>
                 <div class="space-y-2">
-                    <p class="text-[8px] uppercase tracking-widest text-white/20 font-bold">KeBS Compliance</p>
+                    <p class="text-[8px] uppercase tracking-widest text-white/20 font-bold">Compliance record</p>
                     <div class="flex items-baseline gap-2">
-                        <span class="text-4xl font-mono font-bold">8892</span>
+                        <span class="text-2xl font-mono font-bold">NOT SHOWN</span>
                     </div>
                     <div class="flex items-center gap-1.5 pt-1">
-                        <div class="w-1.5 h-1.5 rounded-full bg-[#D4AF37] animate-pulse"></div>
-                        <span class="text-[7px] uppercase font-black tracking-widest gold-text">Permit Active</span>
+                        <div class="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
+                        <span class="text-[7px] uppercase font-black tracking-widest gold-text">Added only when verified</span>
                     </div>
                 </div>
             </div>
@@ -100,15 +104,15 @@
                     <span class="h-px flex-1 bg-gradient-to-r from-[#D4AF37]/20 to-transparent"></span>
                 </h3>
                 <p class="text-sm text-white/60 leading-relaxed font-light italic font-serif opacity-90">
-                    "This batch was developed during a dry and intense morning-sun harvest in the Makueni highlands. The 120-day development cycle resulted in a dense, concentrated nectar profile, verified at 17.2% moisture for world-class longevity and enzymatic complexity."
+                    "A live record could describe where a batch came from, when it was received, the quality observations captured, and the handling notes reviewed by Asili."
                 </p>
             </div>
 
             <!-- Detailed Seasonal Logs -->
             <div class="bg-black/20 rounded-3xl p-6 space-y-5 border border-white/5 relative z-10 group hover:border-[#D4AF37]/10 transition-colors">
                 <div class="flex justify-between items-center mb-1">
-                    <h3 class="text-[8px] uppercase tracking-widest text-white/40 font-bold">120-Day Seasonal Log</h3>
-                    <div class="text-[7px] font-mono opacity-20">DATA SRC: OPENWEATHER HISTORY</div>
+                    <h3 class="text-[8px] uppercase tracking-widest text-white/40 font-bold">Example origin fields</h3>
+                    <div class="text-[7px] font-mono opacity-30">SAMPLE DATA</div>
                 </div>
                 
                 <div class="space-y-4">
@@ -140,11 +144,11 @@
             </div>
             
             <p class="text-[10px] text-white/40 leading-relaxed max-w-[200px] mx-auto font-light">
-                Digital Passport issued by Asili Eco-Wellness. Rooted in integrity. Verified by science.
+                Passport interface preview by Asili Eco-Wellness. Real records will show only information captured and reviewed for an eligible batch.
             </p>
             
             <button onclick="window.print()" class="text-[8px] uppercase tracking-[0.2em] gold-text px-6 py-2 border border-[#D4AF37]/20 rounded-full hover:bg-[#D4AF37]/5 transition-all">
-                Download PDF Certificate
+                Print Demo Record
             </button>
         </div>
     </div>

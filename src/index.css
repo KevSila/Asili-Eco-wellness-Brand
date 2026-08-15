@@ -25,10 +25,21 @@
     scroll-behavior: smooth;
   }
   body {
-    @apply font-sans antialiased overflow-x-hidden;
+    @apply m-0 overflow-x-hidden font-sans antialiased;
+    background: #f9f7f2;
   }
   h1, h2, h3, h4 {
     @apply font-serif;
+  }
+  ::selection {
+    background: rgba(197, 160, 89, 0.35);
+  }
+  :focus-visible {
+    outline: 3px solid #c5a059;
+    outline-offset: 4px;
+  }
+  summary::-webkit-details-marker {
+    display: none;
   }
 }
 
@@ -41,6 +52,34 @@
   }
   .gold-gradient {
     @apply bg-gradient-to-r from-asili-gold via-asili-gold-light to-asili-gold bg-clip-text text-transparent;
+  }
+
+  .premium-card {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    transition: transform 420ms cubic-bezier(0.22, 1, 0.36, 1), border-color 420ms ease, box-shadow 420ms ease;
+  }
+
+  .premium-card::before {
+    background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.12) 48%, transparent 76%);
+    content: "";
+    inset: 0;
+    pointer-events: none;
+    position: absolute;
+    transform: translateX(-120%);
+    transition: transform 800ms cubic-bezier(0.22, 1, 0.36, 1);
+    z-index: -1;
+  }
+
+  .premium-card:hover {
+    border-color: rgba(197, 160, 89, 0.38);
+    box-shadow: 0 24px 65px rgba(26, 58, 30, 0.11);
+    transform: translateY(-7px);
+  }
+
+  .premium-card:hover::before {
+    transform: translateX(120%);
   }
 }
 
@@ -56,4 +95,78 @@
 
 .hero-text-shadow-gold {
   text-shadow: 0 4px 20px rgba(212,175,55,0.15);
+}
+
+.product-stage::after {
+  background: radial-gradient(ellipse, rgba(87, 53, 6, 0.22), transparent 68%);
+  bottom: 2rem;
+  content: "";
+  height: 3rem;
+  left: 20%;
+  position: absolute;
+  width: 60%;
+}
+
+.product-stage-dark::after {
+  background: radial-gradient(ellipse, rgba(212, 175, 55, 0.18), transparent 68%);
+}
+
+.asili-select-light,
+.asili-select-luxury {
+  color-scheme: light;
+}
+
+.asili-select-light option,
+.asili-select-luxury option {
+  background: #f8f1e4;
+  color: #1a3a1e;
+}
+
+details[open] p {
+  animation: reveal-answer 280ms ease-out both;
+}
+
+@keyframes reveal-answer {
+  from {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.skip-link {
+  position: fixed;
+  left: 1rem;
+  top: 1rem;
+  z-index: 100;
+  transform: translateY(-200%);
+  border-radius: 9999px;
+  background: #f9f7f2;
+  color: #1a3a1e;
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: transform 160ms ease;
+}
+
+.skip-link:focus {
+  transform: translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
 }
