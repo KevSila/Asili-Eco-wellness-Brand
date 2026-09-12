@@ -1,0 +1,181 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum OrderStatus {
+  NEW        @map("new")
+  CONFIRMED  @map("confirmed")
+  PROCESSING @map("processing")
+  DISPATCHED @map("dispatched")
+  DELIVERED  @map("delivered")
+  CANCELLED  @map("cancelled")
+
+  @@map("order_status")
+}
+
+enum PaymentStatus {
+  PENDING        @map("pending")
+  PARTIALLY_PAID @map("partially_paid")
+  PAID           @map("paid")
+  REFUNDED       @map("refunded")
+
+  @@map("payment_status")
+}
+
+enum DeliveryStatus {
+  PENDING    @map("pending")
+  SCHEDULED  @map("scheduled")
+  DISPATCHED @map("dispatched")
+  DELIVERED  @map("delivered")
+
+  @@map("delivery_status")
+}
+
+enum FollowUpStatus {
+  OPEN      @map("open")
+  DONE      @map("done")
+  CANCELLED @map("cancelled")
+
+  @@map("follow_up_status")
+}
+
+model Customer {
+  id              String     @id @default(cuid())
+  name            String
+  phone           String
+  normalizedPhone String     @unique @map("normalized_phone")
+  email           String?
+  location        String?
+  notes           String?
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+  orders          Order[]
+  followUps       FollowUp[]
+
+  @@index([email])
+  @@map("customers")
+}
+
+model Product {
+  id          String           @id @default(cuid())
+  name        String
+  slug        String           @unique
+  description String?
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now()) @map("created_at")
+  updatedAt   DateTime         @updatedAt @map("updated_at")
+  variants    ProductVariant[]
+
+  @@map("products")
+}
+
+model ProductVariant {
+  id                String      @id @default(cuid())
+  productId         String      @map("product_id")
+  name              String
+  sku               String      @unique
+  unitPriceMinor    Int         @map("unit_price_minor")
+  currency          String      @default("KES")
+  stockQuantity     Int?        @map("stock_quantity")
+  lowStockThreshold Int         @default(5) @map("low_stock_threshold")
+  active            Boolean     @default(true)
+  createdAt         DateTime    @default(now()) @map("created_at")
+  updatedAt         DateTime    @updatedAt @map("updated_at")
+  product           Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  orderItems        OrderItem[]
+
+  @@unique([productId, name])
+  @@index([productId, active])
+  @@map("product_variants")
+}
+
+model Order {
+  id                     String         @id @default(cuid())
+  orderNumber            String         @unique @map("order_number")
+  idempotencyKey         String?        @unique @map("idempotency_key")
+  idempotencyFingerprint String?        @map("idempotency_fingerprint")
+  customerId             String         @map("customer_id")
+  status                 OrderStatus    @default(NEW)
+  paymentStatus          PaymentStatus  @default(PENDING) @map("payment_status")
+  deliveryStatus         DeliveryStatus @default(PENDING) @map("delivery_status")
+  currency               String         @default("KES")
+  subtotalMinor          Int            @map("subtotal_minor")
+  deliveryFeeMinor       Int            @default(0) @map("delivery_fee_minor")
+  totalAmountMinor       Int            @map("total_amount_minor")
+  deliveryArea           String         @map("delivery_area")
+  customerNote           String?        @map("customer_note")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+  customer               Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items                  OrderItem[]
+  payments               Payment[]
+  followUps              FollowUp[]
+
+  @@index([customerId])
+  @@index([status, createdAt])
+  @@index([paymentStatus])
+  @@index([deliveryStatus])
+  @@map("orders")
+}
+
+model OrderItem {
+  id                  String          @id @default(cuid())
+  orderId             String          @map("order_id")
+  productVariantId    String?         @map("product_variant_id")
+  productNameSnapshot String          @map("product_name_snapshot")
+  variantNameSnapshot String          @map("variant_name_snapshot")
+  skuSnapshot         String?         @map("sku_snapshot")
+  unitPriceMinor      Int             @map("unit_price_minor")
+  quantity            Int
+  lineTotalMinor      Int             @map("line_total_minor")
+  order               Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productVariant      ProductVariant? @relation(fields: [productVariantId], references: [id], onDelete: SetNull)
+
+  @@index([orderId])
+  @@index([productVariantId])
+  @@map("order_items")
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  orderId     String        @map("order_id")
+  method      String
+  amountMinor Int           @map("amount_minor")
+  currency    String        @default("KES")
+  reference   String?
+  status      PaymentStatus @default(PENDING)
+  paidAt      DateTime?     @map("paid_at")
+  notes       String?
+  createdAt   DateTime      @default(now()) @map("created_at")
+  updatedAt   DateTime      @updatedAt @map("updated_at")
+  order       Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@index([orderId, status])
+  @@index([reference])
+  @@map("payments")
+}
+
+model FollowUp {
+  id          String         @id @default(cuid())
+  customerId  String         @map("customer_id")
+  orderId     String?        @map("order_id")
+  title       String
+  notes       String?
+  dueAt       DateTime       @map("due_at")
+  status      FollowUpStatus @default(OPEN)
+  completedAt DateTime?      @map("completed_at")
+  createdAt   DateTime       @default(now()) @map("created_at")
+  updatedAt   DateTime       @updatedAt @map("updated_at")
+  customer    Customer       @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  order       Order?         @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([orderId])
+  @@index([status, dueAt])
+  @@map("follow_ups")
+}
