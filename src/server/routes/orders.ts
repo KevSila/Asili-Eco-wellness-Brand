@@ -3,6 +3,7 @@ import { z } from "zod";
 import { normalizeKenyanPhoneNumber } from "../lib/kenyan-phone";
 import {
   businessService,
+  IdempotencyConflictError,
   InsufficientStockError,
   InvalidOrderTotalError,
   MixedCurrencyError,
@@ -48,10 +49,20 @@ const orderRequestSchema = z.object({
   }
 });
 
+const idempotencyKeySchema = z.uuid();
+
 export function createOrdersRouter(service: BusinessService = businessService) {
   const router = Router();
 
   router.post("/", async (req, res) => {
+    const idempotencyKey = idempotencyKeySchema.safeParse(req.get("Idempotency-Key"));
+    if (!idempotencyKey.success) {
+      return res.status(400).json({
+        error: "A valid idempotency key is required.",
+        code: "INVALID_IDEMPOTENCY_KEY",
+      });
+    }
+
     const parsed = orderRequestSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({
@@ -68,8 +79,8 @@ export function createOrdersRouter(service: BusinessService = businessService) {
           phone: parsed.data.customer.phone as string,
         },
       };
-      const order = await service.createOrder(orderInput);
-      return res.status(201).json({ order });
+      const result = await service.createOrder(orderInput, { idempotencyKey: idempotencyKey.data });
+      return res.status(result.replayed ? 200 : 201).json(result);
     } catch (error) {
       if (error instanceof ProductUnavailableError) {
         return res.status(400).json({ error: error.message, code: "PRODUCT_UNAVAILABLE" });
@@ -77,12 +88,15 @@ export function createOrdersRouter(service: BusinessService = businessService) {
       if (error instanceof InsufficientStockError) {
         return res.status(409).json({ error: error.message, code: "INSUFFICIENT_STOCK" });
       }
+      if (error instanceof IdempotencyConflictError) {
+        return res.status(409).json({ error: error.message, code: "IDEMPOTENCY_CONFLICT" });
+      }
       if (error instanceof MixedCurrencyError || error instanceof InvalidOrderTotalError) {
         return res.status(400).json({ error: error.message, code: "INVALID_ORDER" });
       }
 
       console.error("Order creation failed.", error);
-      return res.status(500).json({ error: "Unable to create the order." });
+      return res.status(500).json({ error: "Unable to create the order.", code: "ORDER_FAILED" });
     }
   });
 

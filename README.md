@@ -5,7 +5,7 @@ Asili is a Kenyan eco-wellness brand beginning with raw honey from Makueni. This
 ## Pages
 
 - `/` — consumer-first brand story, value proposition, traceability preview and partnership inquiries
-- `/honey/` — focused honey product page with direct WhatsApp ordering
+- `/honey/` — focused honey product page with API-backed jar selection, order form and WhatsApp confirmation
 - `/b/SAMPLE-2604-01.html` — no-index demonstration of the planned batch-passport interface
 
 ## Local development
@@ -32,9 +32,7 @@ npm run db:migrate
 npm run db:seed
 ```
 
-`db:migrate` applies committed migrations and `db:seed` idempotently creates one inactive, zero-stock sample product. The sample is deliberately not suitable for publication. No migration or seed should be run against production until the target database and backup/rollback procedure have been reviewed.
-
-Order creation is not part of Foundation Batch 1. When it is added, customer/order/item creation and conditional stock decrements must execute in one Prisma transaction; stock must never be updated in a separate request or after an order has already committed.
+`db:migrate` applies committed migrations. `db:seed` idempotently preserves the inactive zero-value sample and publishes the confirmed Asili honey catalogue: 500g at KES 600 and 1kg at KES 1,200. Their stock is `NULL`, meaning availability has not been confirmed. Re-running the seed updates catalogue wording and prices but deliberately does not overwrite an existing stock value.
 
 ## API and production server
 
@@ -44,7 +42,7 @@ The Express application is assembled in `src/server/app.ts`. API routes live und
 - `GET /api/health/db` — database readiness check; returns `503` without database details when PostgreSQL is unavailable
 - `GET /api/products` — active products that have at least one active variant
 - `GET /api/products/:slug` — one active public product by slug
-- `POST /api/orders` — validated customer order creation with atomic stock reservation
+- `POST /api/orders` — validated, idempotent customer order creation with atomic stock reservation when stock is known
 - `POST /api/contact` — existing Resend-backed contact flow
 
 Order requests use this shape:
@@ -64,9 +62,11 @@ Order requests use this shape:
 }
 ```
 
+Every order request must include an `Idempotency-Key` header containing a UUID. Replaying the same key and normalized payload returns the original order without another stock change; reusing a key for different order details returns `409`. The public route permits 10 attempts per IP per 15 minutes and returns a safe `429` response. This in-memory limit is suitable for one Railway process; use a shared rate-limit store before scaling to multiple API replicas.
+
 Names, SKUs, prices, currencies, totals and stock are always read or calculated by the server. Kenyan mobile numbers are stored as `+254` followed by nine national digits. Order references default to `ASILI-YYMMDD-XXXXXX`; `ORDER_REFERENCE_PREFIX` can provide a future client-specific prefix without changing database concepts.
 
-Order creation loads the current catalogue and executes conditional stock decrements, customer upsert, order creation and snapshot item creation in one PostgreSQL transaction. Conditional `stock_quantity >= quantity` updates prevent competing orders from producing negative inventory.
+Order creation loads the current catalogue and executes conditional stock decrements, customer upsert, order creation and snapshot item creation in one PostgreSQL transaction. Conditional `stock_quantity >= quantity` updates prevent competing orders from producing negative inventory. A `NULL` stock quantity means unconfirmed availability: the public catalogue returns `availableStock: null`, the order can be recorded for confirmation, and no inventory value is invented or decremented. A known value of `0` means unavailable.
 
 Database integration tests are guarded to prevent accidental writes. Against an explicitly approved development database, set `RUN_DATABASE_TESTS=true` for the test process. The suite creates only clearly prefixed `[DEV TEST]` records and removes those records after verification.
 
@@ -79,7 +79,7 @@ npm start
 
 The server reads `PORT` from the environment and falls back to `3000` locally. For Railway, set `DATABASE_URL`, `NODE_ENV=production`, `RESEND_API_KEY`, and the optional contact sender/recipient variables. Use `npm run build` as the build command, `npm start` as the start command, and `npm run db:migrate` as a separately reviewed pre-deploy migration step.
 
-Netlify remains the public static host. Foundation Batch 1 does not configure a Netlify `/api/*` proxy, so the public Netlify site is not connected to the Railway API yet.
+Netlify remains the public static host. No Netlify `/api/*` proxy is configured yet, so the deployed public ordering form cannot reach Railway until an approved API routing or base-URL deployment batch is completed.
 
 ## Production checks
 
@@ -93,6 +93,6 @@ The Vite build produces separate static documents for the home and honey pages. 
 
 ## Content notes
 
-- Current jar sizes, prices and delivery details are confirmed through WhatsApp until the product catalogue is finalised.
+- Confirmed jar prices are KES 600 for 500g and KES 1,200 for 1kg. Delivery is location-based, excluded from the product subtotal and confirmed separately.
 - The Glass Hive batch passport is described as a system in rollout. Demo records must remain clearly marked and must not be presented as certificates.
 - Add certification, compliance or performance claims only after the supporting evidence and public wording have been reviewed.

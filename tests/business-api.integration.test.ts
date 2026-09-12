@@ -1,4 +1,5 @@
 import "dotenv/config";
+import { randomUUID } from "node:crypto";
 import { PrismaClient } from "@prisma/client";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
@@ -73,10 +74,18 @@ function orderRequest(
   };
 }
 
+function postOrder() {
+  return request(app).post("/api/orders").set("Idempotency-Key", randomUUID());
+}
+
 databaseDescribe("Business API against PostgreSQL", () => {
   beforeAll(async () => {
     await cleanAllTestData();
-    app = await createApp({ serveFrontend: false, resendApiKey: "" });
+    app = await createApp({
+      serveFrontend: false,
+      resendApiKey: "",
+      orderRateLimiter: (_request, _response, next) => next(),
+    });
 
     const activeProduct = await prisma.product.create({
       data: {
@@ -211,8 +220,7 @@ databaseDescribe("Business API against PostgreSQL", () => {
   });
 
   it("creates a valid order with normalized phone, server totals and snapshots", async () => {
-    const response = await request(app)
-      .post("/api/orders")
+    const response = await postOrder()
       .send(orderRequest("0710 000 001", [{ variantId: firstVariantId, quantity: 2 }]));
 
     expect(response.status).toBe(201);
@@ -244,9 +252,51 @@ databaseDescribe("Business API against PostgreSQL", () => {
       .toMatchObject({ stockQuantity: 8 });
   });
 
+  it("replays the same idempotent submission without a duplicate order or stock decrement", async () => {
+    const key = randomUUID();
+    const payload = orderRequest("0710000011", [{ variantId: firstVariantId, quantity: 2 }]);
+    const first = await request(app).post("/api/orders").set("Idempotency-Key", key).send(payload);
+    const replay = await request(app).post("/api/orders").set("Idempotency-Key", key).send(payload);
+
+    expect(first.status).toBe(201);
+    expect(first.body.replayed).toBe(false);
+    expect(replay.status).toBe(200);
+    expect(replay.body.replayed).toBe(true);
+    expect(replay.body.order.orderReference).toBe(first.body.order.orderReference);
+    expect(await prisma.order.count({ where: { idempotencyKey: key } })).toBe(1);
+    expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } }))
+      .toMatchObject({ stockQuantity: 8 });
+  });
+
+  it("rejects reuse of an idempotency key for different order details", async () => {
+    const key = randomUUID();
+    const first = await request(app).post("/api/orders").set("Idempotency-Key", key)
+      .send(orderRequest("0710000012", [{ variantId: firstVariantId, quantity: 1 }]));
+    const conflict = await request(app).post("/api/orders").set("Idempotency-Key", key)
+      .send(orderRequest("0710000012", [{ variantId: firstVariantId, quantity: 2 }]));
+
+    expect(first.status).toBe(201);
+    expect(conflict.status).toBe(409);
+    expect(conflict.body.code).toBe("IDEMPOTENCY_CONFLICT");
+    expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } }))
+      .toMatchObject({ stockQuantity: 9 });
+  });
+
+  it("accepts an order without decrement when stock has not been confirmed", async () => {
+    await prisma.productVariant.update({
+      where: { id: firstVariantId },
+      data: { stockQuantity: null },
+    });
+    const response = await postOrder()
+      .send(orderRequest("0710000013", [{ variantId: firstVariantId, quantity: 2 }]));
+
+    expect(response.status).toBe(201);
+    expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } }))
+      .toMatchObject({ stockQuantity: null });
+  });
+
   it("rejects an inactive variant", async () => {
-    const response = await request(app)
-      .post("/api/orders")
+    const response = await postOrder()
       .send(orderRequest("0710000002", [{ variantId: inactiveVariantId, quantity: 1 }]));
 
     expect(response.status).toBe(400);
@@ -254,8 +304,7 @@ databaseDescribe("Business API against PostgreSQL", () => {
   });
 
   it("rejects an active variant whose product is inactive", async () => {
-    const response = await request(app)
-      .post("/api/orders")
+    const response = await postOrder()
       .send(orderRequest("0710000010", [{ variantId: inactiveProductVariantId, quantity: 1 }]));
 
     expect(response.status).toBe(400);
@@ -263,8 +312,7 @@ databaseDescribe("Business API against PostgreSQL", () => {
   });
 
   it.each([0, -1])("rejects quantity %s", async (quantity) => {
-    const response = await request(app)
-      .post("/api/orders")
+    const response = await postOrder()
       .send(orderRequest("0710000003", [{ variantId: firstVariantId, quantity }]));
 
     expect(response.status).toBe(400);
@@ -276,8 +324,7 @@ databaseDescribe("Business API against PostgreSQL", () => {
       where: { id: firstVariantId },
       data: { stockQuantity: 1 },
     });
-    const response = await request(app)
-      .post("/api/orders")
+    const response = await postOrder()
       .send(orderRequest("0710000004", [{ variantId: firstVariantId, quantity: 2 }]));
 
     expect(response.status).toBe(409);
@@ -287,7 +334,7 @@ databaseDescribe("Business API against PostgreSQL", () => {
   });
 
   it("creates a multi-item order with server-calculated totals and decrements", async () => {
-    const response = await request(app).post("/api/orders").send(orderRequest("0710000005", [
+    const response = await postOrder().send(orderRequest("0710000005", [
       { variantId: firstVariantId, quantity: 2 },
       { variantId: secondVariantId, quantity: 3 },
     ]));
@@ -315,7 +362,7 @@ databaseDescribe("Business API against PostgreSQL", () => {
       data: { stockQuantity: 0 },
     });
 
-    const response = await request(app).post("/api/orders").send(orderRequest("0710000006", [
+    const response = await postOrder().send(orderRequest("0710000006", [
       { variantId: firstVariantId, quantity: 1 },
       { variantId: secondVariantId, quantity: 1 },
     ]));
@@ -331,11 +378,9 @@ databaseDescribe("Business API against PostgreSQL", () => {
   });
 
   it("reuses a customer across equivalent Kenyan phone formats", async () => {
-    const first = await request(app)
-      .post("/api/orders")
+    const first = await postOrder()
       .send(orderRequest("0710000007", [{ variantId: firstVariantId, quantity: 1 }]));
-    const second = await request(app)
-      .post("/api/orders")
+    const second = await postOrder()
       .send(orderRequest("+254710000007", [{ variantId: firstVariantId, quantity: 1 }]));
 
     expect(first.status).toBe(201);
@@ -352,9 +397,9 @@ databaseDescribe("Business API against PostgreSQL", () => {
     });
 
     const responses = await Promise.all([
-      request(app).post("/api/orders")
+      postOrder()
         .send(orderRequest("0710000008", [{ variantId: firstVariantId, quantity: 1 }])),
-      request(app).post("/api/orders")
+      postOrder()
         .send(orderRequest("0710000009", [{ variantId: firstVariantId, quantity: 1 }])),
     ]);
 

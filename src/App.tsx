@@ -26,6 +26,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
+import { HoneyOrderForm } from "@/src/components/HoneyOrderForm";
 
 const WHATSAPP_NUMBER = "254717578394";
 const WHATSAPP_BASE = `https://wa.me/${WHATSAPP_NUMBER}`;
@@ -285,9 +286,7 @@ const Header = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => {
                 {page === "home" ? "Explore honey" : "About Asili"}
               </a>
               <a
-                href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={page === "honey" ? "#order" : "/honey/#order"}
                 className={cn(
                   "rounded-full px-4 py-3 text-center text-[10px] font-black uppercase tracking-wider",
                   theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
@@ -865,9 +864,7 @@ const HoneyPage = () => (
             </p>
             <div className="mt-9 flex flex-col gap-3 sm:flex-row">
               <a
-                href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
-                target="_blank"
-                rel="noopener noreferrer"
+                href="#order"
                 className="group inline-flex items-center justify-center gap-3 rounded-full bg-asili-gold px-8 py-4 text-sm font-black text-asili-black shadow-[0_18px_50px_rgba(212,175,55,0.14)] transition-transform hover:-translate-y-1"
               >
                 Buy our honey <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
@@ -877,7 +874,7 @@ const HoneyPage = () => (
               </a>
             </div>
             <p className="mt-5 max-w-xl text-xs leading-relaxed text-asili-cream/40">
-              Current jar sizes, retail and bulk prices are confirmed per available batch. Delivery can be arranged at the customer’s expense.
+              500g and 1kg jars are available to order. Delivery is location-based and priced separately.
             </p>
           </FadeIn>
           <FadeIn delay={0.15}>
@@ -910,6 +907,19 @@ const HoneyPage = () => (
               </FadeIn>
             ))}
           </div>
+        </div>
+      </Section>
+
+      <Section id="order" className="bg-[#eee4d2] text-asili-green" motif={{ tone: "light", side: "right", quiet: true }}>
+        <div className="grid gap-10 lg:grid-cols-[0.7fr_1.3fr] lg:gap-16">
+          <FadeIn>
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">Order Asili honey</span>
+            <h2 className="mt-5 text-4xl font-bold leading-tight sm:text-5xl">Choose your jars. We’ll confirm delivery.</h2>
+            <p className="mt-5 max-w-md text-sm leading-relaxed text-asili-green/65">
+              Your order total covers the honey only. Delivery is location-based, so we will confirm its fee separately before fulfilment.
+            </p>
+          </FadeIn>
+          <FadeIn delay={0.1}><HoneyOrderForm /></FadeIn>
         </div>
       </Section>
 
@@ -1084,8 +1094,8 @@ const HoneyPage = () => (
           <div className="divide-y divide-asili-green/10 border-y border-asili-green/10">
             {[
               ["Is Asili honey really raw and unheated?", "Yes. Asili honey is natural, raw and not heat-treated. Its appearance and texture can vary naturally by season, flora and batch."],
-              ["What sizes and prices are available?", "Message us on WhatsApp and we will confirm current jar sizes, retail or bulk price, and available quantity for the batch before you pay."],
-              ["How does delivery work?", "Collection or delivery details are agreed when your order is confirmed. Delivery can be facilitated at the customer’s expense."],
+              ["What sizes and prices are available?", "The 500g jar is KES 600 and the 1kg jar is KES 1,200. Availability is confirmed with your order."],
+              ["How does delivery work?", "Tell us your delivery location when ordering. The product subtotal excludes delivery; we confirm the location-based delivery fee separately."],
               ["Where is the honey sourced?", "The current Asili honey story is rooted in Makueni, Kenya. Specific source information will be shared where it has been captured and reviewed for the batch."],
               ["Does crystallisation mean honey has spoiled?", "No. Crystallisation is a natural change in honey. Place the closed jar in warm—not boiling—water if you prefer a more liquid texture."],
               ["Can I discuss a hive, CSR or pollination partnership?", "Yes. These models are at different stages of development, so use the inquiry form or WhatsApp and we will discuss the relevant concept, feasibility and next step honestly."],

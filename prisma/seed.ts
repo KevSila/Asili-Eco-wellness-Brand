@@ -39,9 +39,47 @@ async function main() {
         active: false,
       },
     });
+
+    const realHoney = await transaction.product.upsert({
+      where: { slug: "asili-raw-makueni-honey" },
+      update: {
+        name: "Asili Raw Makueni Honey",
+        description: "Asili honey from Makueni, available in 500g and 1kg jars.",
+        active: true,
+      },
+      create: {
+        name: "Asili Raw Makueni Honey",
+        slug: "asili-raw-makueni-honey",
+        description: "Asili honey from Makueni, available in 500g and 1kg jars.",
+        active: true,
+      },
+    });
+
+    for (const variant of [
+      { name: "500g", sku: "ASILI-HONEY-500G", unitPriceMinor: 60_000 },
+      { name: "1kg", sku: "ASILI-HONEY-1KG", unitPriceMinor: 120_000 },
+    ]) {
+      await transaction.productVariant.upsert({
+        where: { sku: variant.sku },
+        update: {
+          productId: realHoney.id,
+          name: variant.name,
+          unitPriceMinor: variant.unitPriceMinor,
+          currency: "KES",
+          active: true,
+        },
+        create: {
+          productId: realHoney.id,
+          ...variant,
+          currency: "KES",
+          stockQuantity: null,
+          active: true,
+        },
+      });
+    }
   });
 
-  console.log("Seeded the inactive Asili sample product and variant.");
+  console.log("Seeded the inactive sample and real Asili honey catalogue records.");
 }
 
 main()

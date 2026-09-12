@@ -1,4 +1,5 @@
 import express from "express";
+import type { RequestHandler } from "express";
 import path from "node:path";
 import { createServer as createViteServer } from "vite";
 import { createContactRouter } from "./routes/contact";
@@ -7,6 +8,7 @@ import type { DatabaseReadinessCheck } from "./services/database-readiness";
 import { createOrdersRouter } from "./routes/orders";
 import { createProductsRouter } from "./routes/products";
 import type { BusinessService } from "./services/business";
+import { createOrderRateLimiter } from "./middleware/order-rate-limit";
 
 interface CreateAppOptions {
   serveFrontend?: boolean;
@@ -15,6 +17,7 @@ interface CreateAppOptions {
   contactToEmail?: string;
   databaseReadinessCheck?: DatabaseReadinessCheck;
   businessService?: BusinessService;
+  orderRateLimiter?: RequestHandler;
 }
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -22,6 +25,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   const serveFrontend = options.serveFrontend ?? true;
 
   app.disable("x-powered-by");
+  if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
   app.use(express.json({ limit: "20kb" }));
   app.use(
     "/api/health",
@@ -36,7 +40,11 @@ export async function createApp(options: CreateAppOptions = {}) {
     }),
   );
   app.use("/api/products", createProductsRouter(options.businessService));
-  app.use("/api/orders", createOrdersRouter(options.businessService));
+  app.use(
+    "/api/orders",
+    options.orderRateLimiter ?? createOrderRateLimiter(),
+    createOrdersRouter(options.businessService),
+  );
 
   if (!serveFrontend) {
     return app;

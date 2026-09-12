@@ -81,7 +81,7 @@ model ProductVariant {
   sku               String      @unique
   unitPriceMinor    Int         @map("unit_price_minor")
   currency          String      @default("KES")
-  stockQuantity     Int         @default(0) @map("stock_quantity")
+  stockQuantity     Int?        @map("stock_quantity")
   lowStockThreshold Int         @default(5) @map("low_stock_threshold")
   active            Boolean     @default(true)
   createdAt         DateTime    @default(now()) @map("created_at")
@@ -95,24 +95,26 @@ model ProductVariant {
 }
 
 model Order {
-  id               String         @id @default(cuid())
-  orderNumber      String         @unique @map("order_number")
-  customerId       String         @map("customer_id")
-  status           OrderStatus    @default(NEW)
-  paymentStatus    PaymentStatus  @default(PENDING) @map("payment_status")
-  deliveryStatus   DeliveryStatus @default(PENDING) @map("delivery_status")
-  currency         String         @default("KES")
-  subtotalMinor    Int            @map("subtotal_minor")
-  deliveryFeeMinor Int            @default(0) @map("delivery_fee_minor")
-  totalAmountMinor Int            @map("total_amount_minor")
-  deliveryArea     String         @map("delivery_area")
-  customerNote     String?        @map("customer_note")
-  createdAt        DateTime       @default(now()) @map("created_at")
-  updatedAt        DateTime       @updatedAt @map("updated_at")
-  customer         Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
-  items            OrderItem[]
-  payments         Payment[]
-  followUps        FollowUp[]
+  id                     String         @id @default(cuid())
+  orderNumber            String         @unique @map("order_number")
+  idempotencyKey         String?        @unique @map("idempotency_key")
+  idempotencyFingerprint String?        @map("idempotency_fingerprint")
+  customerId             String         @map("customer_id")
+  status                 OrderStatus    @default(NEW)
+  paymentStatus          PaymentStatus  @default(PENDING) @map("payment_status")
+  deliveryStatus         DeliveryStatus @default(PENDING) @map("delivery_status")
+  currency               String         @default("KES")
+  subtotalMinor          Int            @map("subtotal_minor")
+  deliveryFeeMinor       Int            @default(0) @map("delivery_fee_minor")
+  totalAmountMinor       Int            @map("total_amount_minor")
+  deliveryArea           String         @map("delivery_area")
+  customerNote           String?        @map("customer_note")
+  createdAt              DateTime       @default(now()) @map("created_at")
+  updatedAt              DateTime       @updatedAt @map("updated_at")
+  customer               Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  items                  OrderItem[]
+  payments               Payment[]
+  followUps              FollowUp[]
 
   @@index([customerId])
   @@index([status, createdAt])

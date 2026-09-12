@@ -1,4 +1,4 @@
-import { randomBytes } from "node:crypto";
+import { createHash, randomBytes } from "node:crypto";
 import {
   Prisma,
   type DeliveryStatus,
@@ -16,7 +16,7 @@ export interface PublicVariant {
   name: string;
   priceMinor: number;
   currency: string;
-  availableStock: number;
+  availableStock: number | null;
 }
 
 export interface PublicProduct {
@@ -57,7 +57,6 @@ export interface PublicOrder {
   deliveryLocation: string;
   customerNote: string | null;
   items: Array<{
-    variantId: string | null;
     sku: string | null;
     productName: string;
     variantName: string;
@@ -67,10 +66,19 @@ export interface PublicOrder {
   }>;
 }
 
+export interface CreateOrderOptions {
+  idempotencyKey: string;
+}
+
+export interface CreateOrderResult {
+  order: PublicOrder;
+  replayed: boolean;
+}
+
 export interface BusinessService {
   listProducts(): Promise<PublicProduct[]>;
   getProductBySlug(slug: string): Promise<PublicProduct | null>;
-  createOrder(input: CreateOrderInput): Promise<PublicOrder>;
+  createOrder(input: CreateOrderInput, options: CreateOrderOptions): Promise<CreateOrderResult>;
 }
 
 export class ProductUnavailableError extends Error {
@@ -98,6 +106,13 @@ export class InvalidOrderTotalError extends Error {
   constructor() {
     super("The calculated order total is outside the supported range.");
     this.name = "InvalidOrderTotalError";
+  }
+}
+
+export class IdempotencyConflictError extends Error {
+  constructor() {
+    super("This submission key has already been used for different order details.");
+    this.name = "IdempotencyConflictError";
   }
 }
 
@@ -129,7 +144,7 @@ function toPublicProduct(product: {
     name: string;
     unitPriceMinor: number;
     currency: string;
-    stockQuantity: number;
+    stockQuantity: number | null;
   }>;
 }): PublicProduct {
   return {
@@ -178,6 +193,57 @@ function isRetryableTransactionError(error: unknown) {
     && (error.code === "P2002" || error.code === "P2034");
 }
 
+const publicOrderInclude = {
+  customer: { select: { name: true, phone: true, email: true } },
+  items: true,
+} satisfies Prisma.OrderInclude;
+
+type PublicOrderRecord = Prisma.OrderGetPayload<{ include: typeof publicOrderInclude }>;
+
+function toPublicOrder(order: PublicOrderRecord): PublicOrder {
+  return {
+    orderReference: order.orderNumber,
+    status: statusValue(order.status),
+    paymentStatus: statusValue(order.paymentStatus),
+    deliveryStatus: statusValue(order.deliveryStatus),
+    currency: order.currency,
+    subtotalMinor: order.subtotalMinor,
+    deliveryFeeMinor: order.deliveryFeeMinor,
+    totalAmountMinor: order.totalAmountMinor,
+    customer: order.customer,
+    deliveryLocation: order.deliveryArea,
+    customerNote: order.customerNote,
+    items: order.items.map((item) => ({
+      sku: item.skuSnapshot,
+      productName: item.productNameSnapshot,
+      variantName: item.variantNameSnapshot,
+      quantity: item.quantity,
+      unitPriceMinor: item.unitPriceMinor,
+      lineTotalMinor: item.lineTotalMinor,
+    })),
+  };
+}
+
+function createIdempotencyFingerprint(input: CreateOrderInput) {
+  const canonicalInput = {
+    customer: input.customer,
+    deliveryLocation: input.deliveryLocation,
+    customerNote: input.customerNote ?? null,
+    items: [...input.items].sort((left, right) => left.variantId.localeCompare(right.variantId)),
+  };
+  return createHash("sha256").update(JSON.stringify(canonicalInput)).digest("hex");
+}
+
+async function findIdempotentOrder(idempotencyKey: string, fingerprint: string) {
+  const existing = await prisma.order.findUnique({
+    where: { idempotencyKey },
+    include: publicOrderInclude,
+  });
+  if (!existing) return null;
+  if (existing.idempotencyFingerprint !== fingerprint) throw new IdempotencyConflictError();
+  return { order: toPublicOrder(existing), replayed: true };
+}
+
 export const businessService: BusinessService = {
   async listProducts() {
     const products = await prisma.product.findMany({
@@ -205,7 +271,11 @@ export const businessService: BusinessService = {
     return product ? toPublicProduct(product) : null;
   },
 
-  async createOrder(input) {
+  async createOrder(input, options) {
+    const fingerprint = createIdempotencyFingerprint(input);
+    const priorResult = await findIdempotentOrder(options.idempotencyKey, fingerprint);
+    if (priorResult) return priorResult;
+
     for (let attempt = 1; attempt <= ORDER_REFERENCE_ATTEMPTS; attempt += 1) {
       const orderReference = createOrderReference();
 
@@ -222,6 +292,7 @@ export const businessService: BusinessService = {
               sku: true,
               unitPriceMinor: true,
               currency: true,
+              stockQuantity: true,
               active: true,
               product: {
                 select: { name: true, active: true },
@@ -255,6 +326,7 @@ export const businessService: BusinessService = {
           }
 
           for (const item of lineItems) {
+            if (item.variant.stockQuantity === null) continue;
             const stockUpdate = await transaction.productVariant.updateMany({
               where: {
                 id: item.variantId,
@@ -290,6 +362,8 @@ export const businessService: BusinessService = {
           const order = await transaction.order.create({
             data: {
               orderNumber: orderReference,
+              idempotencyKey: options.idempotencyKey,
+              idempotencyFingerprint: fingerprint,
               customerId: customer.id,
               currency: lineItems[0].variant.currency,
               subtotalMinor,
@@ -308,39 +382,19 @@ export const businessService: BusinessService = {
                 })),
               },
             },
-            include: {
-              customer: { select: { name: true, phone: true, email: true } },
-              items: true,
-            },
+            include: publicOrderInclude,
           });
 
-          return {
-            orderReference: order.orderNumber,
-            status: statusValue(order.status),
-            paymentStatus: statusValue(order.paymentStatus),
-            deliveryStatus: statusValue(order.deliveryStatus),
-            currency: order.currency,
-            subtotalMinor: order.subtotalMinor,
-            deliveryFeeMinor: order.deliveryFeeMinor,
-            totalAmountMinor: order.totalAmountMinor,
-            customer: order.customer,
-            deliveryLocation: order.deliveryArea,
-            customerNote: order.customerNote,
-            items: order.items.map((item) => ({
-              variantId: item.productVariantId,
-              sku: item.skuSnapshot,
-              productName: item.productNameSnapshot,
-              variantName: item.variantNameSnapshot,
-              quantity: item.quantity,
-              unitPriceMinor: item.unitPriceMinor,
-              lineTotalMinor: item.lineTotalMinor,
-            })),
-          };
+          return { order: toPublicOrder(order), replayed: false };
         }, {
           maxWait: 10_000,
           timeout: 15_000,
         });
       } catch (error) {
+        if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === "P2002") {
+          const replay = await findIdempotentOrder(options.idempotencyKey, fingerprint);
+          if (replay) return replay;
+        }
         if (attempt < ORDER_REFERENCE_ATTEMPTS && isRetryableTransactionError(error)) {
           continue;
         }
