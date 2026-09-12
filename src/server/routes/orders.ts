@@ -11,6 +11,7 @@ import {
   type BusinessService,
   type CreateOrderInput,
 } from "../services/business";
+import type { OwnerOrderNotifier } from "../services/order-notification";
 
 const optionalEmail = z.preprocess(
   (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
@@ -51,7 +52,7 @@ const orderRequestSchema = z.object({
 
 const idempotencyKeySchema = z.uuid();
 
-export function createOrdersRouter(service: BusinessService = businessService) {
+export function createOrdersRouter(service: BusinessService = businessService, notifier?: OwnerOrderNotifier) {
   const router = Router();
 
   router.post("/", async (req, res) => {
@@ -80,6 +81,13 @@ export function createOrdersRouter(service: BusinessService = businessService) {
         },
       };
       const result = await service.createOrder(orderInput, { idempotencyKey: idempotencyKey.data });
+      if (!result.replayed && notifier) {
+        try {
+          await notifier.notifyWebsiteOrder(result.order);
+        } catch {
+          console.error("Owner order notification failed.");
+        }
+      }
       return res.status(result.replayed ? 200 : 201).json(result);
     } catch (error) {
       if (error instanceof ProductUnavailableError) {

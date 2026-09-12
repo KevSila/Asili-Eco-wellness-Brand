@@ -47,6 +47,10 @@ function createMockService() {
       paymentStatus: update.paymentStatus?.toLowerCase() ?? sampleOrder.paymentStatus,
       deliveryStatus: update.deliveryStatus?.toLowerCase() ?? sampleOrder.deliveryStatus,
     } })),
+    listInventory: vi.fn().mockResolvedValue({ products: [] }),
+    adjustInventory: vi.fn().mockResolvedValue({ variantId: "variant-test", stockQuantity: 10 }),
+    recordManualSale: vi.fn().mockResolvedValue({ ...sampleOrder, source: "walk_in" }),
+    listCustomers: vi.fn().mockResolvedValue({ customers: [] }),
   } satisfies AdminService;
 }
 
@@ -147,6 +151,15 @@ describe("admin authentication and APIs", () => {
     expect(service.getOrder).toHaveBeenCalledWith(sampleOrder.orderReference);
   });
 
+  it("passes order search and status filters to the service", async () => {
+    const { app, service } = await createTestApp();
+    const agent = request.agent(app);
+    await login(agent);
+    const response = await agent.get("/api/admin/orders?search=0712&orderStatus=new&paymentStatus=pending&deliveryStatus=pending&source=website");
+    expect(response.status).toBe(200);
+    expect(service.listOrders).toHaveBeenCalledWith(expect.objectContaining({ search: "0712", orderStatus: "NEW", paymentStatus: "PENDING", deliveryStatus: "PENDING", source: "WEBSITE" }));
+  });
+
   it.each([
     ["orderStatus", "confirmed", OrderStatus.CONFIRMED],
     ["paymentStatus", "paid", PaymentStatus.PAID],
@@ -186,5 +199,29 @@ describe("admin authentication and APIs", () => {
     expect(logout.status).toBe(204);
     expect(logout.headers["set-cookie"][0]).toContain("Expires=Thu, 01 Jan 1970");
     expect(protectedResponse.status).toBe(401);
+  });
+
+  it("protects inventory reads and requires CSRF for inventory writes", async () => {
+    const { app, service } = await createTestApp();
+    const unauthenticated = await request(app).get("/api/admin/inventory");
+    expect(unauthenticated.status).toBe(401);
+    const agent = request.agent(app);
+    const session = await login(agent);
+    const inventory = await agent.get("/api/admin/inventory");
+    const rejected = await agent.post("/api/admin/inventory/variant-test/movements").send({ action: "opening_stock", quantity: 10, reason: "Opening count" });
+    const accepted = await agent.post("/api/admin/inventory/variant-test/movements").set("X-CSRF-Token", session.csrfToken).send({ action: "opening_stock", quantity: 10, reason: "Opening count" });
+    expect(inventory.status).toBe(200);
+    expect(rejected.status).toBe(403);
+    expect(accepted.status).toBe(201);
+    expect(service.adjustInventory).toHaveBeenCalledWith("variant-test", expect.objectContaining({ action: "opening_stock", quantity: 10 }));
+  });
+
+  it("records a validated manual sale through the protected API", async () => {
+    const { app, service } = await createTestApp();
+    const agent = request.agent(app);
+    const session = await login(agent);
+    const response = await agent.post("/api/admin/sales").set("X-CSRF-Token", session.csrfToken).send({ source: "walk_in", customerName: "Walk-in test", customerPhone: "0712345678", variantId: "variant-test", quantity: 1, unitPriceMinor: 60000, paymentStatus: "paid", paymentMethod: "Cash" });
+    expect(response.status).toBe(201);
+    expect(service.recordManualSale).toHaveBeenCalledWith(expect.objectContaining({ source: "WALK_IN", customerPhone: "+254712345678", paymentStatus: "PAID" }));
   });
 });

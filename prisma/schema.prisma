@@ -44,11 +44,42 @@ enum FollowUpStatus {
   @@map("follow_up_status")
 }
 
+enum OrderSource {
+  WEBSITE  @map("website")
+  MANUAL   @map("manual")
+  WHATSAPP @map("whatsapp")
+  PHONE    @map("phone")
+  WALK_IN  @map("walk_in")
+
+  @@map("order_source")
+}
+
+enum InventoryMovementType {
+  OPENING_STOCK     @map("opening_stock")
+  STOCK_RECEIVED    @map("stock_received")
+  ONLINE_SALE       @map("online_sale")
+  MANUAL_SALE       @map("manual_sale")
+  DAMAGE            @map("damage")
+  CORRECTION        @map("correction")
+  RETURN            @map("return")
+  STOCK_UNCONFIRMED @map("stock_unconfirmed")
+
+  @@map("inventory_movement_type")
+}
+
+enum InventoryMovementSource {
+  ADMIN         @map("admin")
+  WEBSITE_ORDER @map("website_order")
+  MANUAL_SALE   @map("manual_sale")
+
+  @@map("inventory_movement_source")
+}
+
 model Customer {
   id              String     @id @default(cuid())
-  name            String
-  phone           String
-  normalizedPhone String     @unique @map("normalized_phone")
+  name            String?
+  phone           String?
+  normalizedPhone String?    @unique @map("normalized_phone")
   email           String?
   location        String?
   notes           String?
@@ -88,6 +119,7 @@ model ProductVariant {
   updatedAt         DateTime    @updatedAt @map("updated_at")
   product           Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
   orderItems        OrderItem[]
+  inventoryMovements InventoryMovement[]
 
   @@unique([productId, name])
   @@index([productId, active])
@@ -99,7 +131,10 @@ model Order {
   orderNumber            String         @unique @map("order_number")
   idempotencyKey         String?        @unique @map("idempotency_key")
   idempotencyFingerprint String?        @map("idempotency_fingerprint")
-  customerId             String         @map("customer_id")
+  customerId             String?        @map("customer_id")
+  source                 OrderSource    @default(WEBSITE)
+  customerNameSnapshot   String?        @map("customer_name_snapshot")
+  customerPhoneSnapshot  String?        @map("customer_phone_snapshot")
   status                 OrderStatus    @default(NEW)
   paymentStatus          PaymentStatus  @default(PENDING) @map("payment_status")
   deliveryStatus         DeliveryStatus @default(PENDING) @map("delivery_status")
@@ -107,20 +142,42 @@ model Order {
   subtotalMinor          Int            @map("subtotal_minor")
   deliveryFeeMinor       Int            @default(0) @map("delivery_fee_minor")
   totalAmountMinor       Int            @map("total_amount_minor")
-  deliveryArea           String         @map("delivery_area")
+  deliveryArea           String?        @map("delivery_area")
   customerNote           String?        @map("customer_note")
   createdAt              DateTime       @default(now()) @map("created_at")
   updatedAt              DateTime       @updatedAt @map("updated_at")
-  customer               Customer       @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  customer               Customer?      @relation(fields: [customerId], references: [id], onDelete: Restrict)
   items                  OrderItem[]
   payments               Payment[]
   followUps              FollowUp[]
+  inventoryMovements     InventoryMovement[]
 
   @@index([customerId])
   @@index([status, createdAt])
   @@index([paymentStatus])
   @@index([deliveryStatus])
+  @@index([source, createdAt])
   @@map("orders")
+}
+
+model InventoryMovement {
+  id               String                  @id @default(cuid())
+  productVariantId String                  @map("product_variant_id")
+  orderId          String?                 @map("order_id")
+  type             InventoryMovementType
+  quantityDelta    Int?                    @map("quantity_delta")
+  stockBefore      Int?                    @map("stock_before")
+  stockAfter       Int?                    @map("stock_after")
+  reason           String
+  source           InventoryMovementSource
+  createdAt        DateTime                @default(now()) @map("created_at")
+  productVariant   ProductVariant          @relation(fields: [productVariantId], references: [id], onDelete: Restrict)
+  order            Order?                  @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+  @@index([productVariantId, createdAt])
+  @@index([orderId])
+  @@index([type, createdAt])
+  @@map("inventory_movements")
 }
 
 model OrderItem {

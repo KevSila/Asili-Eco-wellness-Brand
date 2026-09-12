@@ -1,23 +1,16 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import {
-  ArrowLeft,
-  ExternalLink,
-  LayoutDashboard,
-  LoaderCircle,
-  LogOut,
-  Package,
-  RefreshCw,
-  ShoppingBag,
-  Users,
-} from "lucide-react";
+import { ArrowLeft, ExternalLink, LayoutDashboard, LoaderCircle, LogOut, Package, PlusCircle, RefreshCw, Search, ShoppingBag, Users } from "lucide-react";
 
+type View = "dashboard" | "orders" | "sale" | "inventory" | "customers";
 type StatusKind = "orderStatus" | "paymentStatus" | "deliveryStatus";
 
 interface AdminOrder {
   orderReference: string;
-  customer: { name: string; phone: string; normalizedPhone: string; email: string | null };
-  deliveryLocation: string;
+  source: string;
+  customer: { name: string; phone: string | null; normalizedPhone: string | null; email: string | null };
+  deliveryLocation: string | null;
   customerNote: string | null;
+  paymentMethod: string | null;
   currency: string;
   subtotalMinor: number;
   deliveryFeeMinor: number;
@@ -30,42 +23,34 @@ interface AdminOrder {
   updatedAt: string;
 }
 
+interface Variant {
+  id: string;
+  name: string;
+  sku: string;
+  unitPriceMinor: number;
+  currency: string;
+  stockQuantity: number | null;
+  inventoryMovements?: Array<{ id: string; type: string; quantityDelta: number | null; stockBefore: number | null; stockAfter: number | null; reason: string; source: string; createdAt: string; order: { orderNumber: string } | null }>;
+}
+interface InventoryData { products: Array<{ name: string; variants: Variant[] }> }
+interface CustomerSummary { name: string; phone: string | null; email: string | null; orderCount: number; totalProductSpendMinor: number; lastOrderAt: string | null; latestOrderSource: string | null }
 interface DashboardData {
   metrics: { totalOrders: number; newOrders: number; confirmedOrders: number; pendingPayments: number; pendingDeliveries: number };
   recentOrders: AdminOrder[];
-  recentCustomers: Array<{ name: string; phone: string; email: string | null; location: string | null; orderCount: number; createdAt: string }>;
-  products: Array<{ name: string; slug: string; active: boolean; variants: Array<{ name: string; sku: string; active: boolean; unitPriceMinor: number; currency: string; stockQuantity: number | null }> }>;
+  recentCustomers: Array<{ name: string; phone: string | null; email: string | null; location: string | null; orderCount: number; createdAt: string }>;
+  products: Array<{ name: string; active: boolean; variants: Variant[] }>;
 }
-
-interface SessionData {
-  user: { email: string; role: string };
-  expiresAt: string;
-  csrfToken: string;
-}
+interface SessionData { user: { email: string; role: string }; expiresAt: string; csrfToken: string }
 
 const statusOptions: Record<StatusKind, string[]> = {
   orderStatus: ["new", "confirmed", "processing", "dispatched", "delivered", "cancelled"],
   paymentStatus: ["pending", "partially_paid", "paid", "refunded"],
   deliveryStatus: ["pending", "scheduled", "dispatched", "delivered"],
 };
-
-const money = (minor: number, currency = "KES") => new Intl.NumberFormat("en-KE", {
-  style: "currency",
-  currency,
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-}).format(minor / 100);
-
-const dateTime = (value: string) => new Intl.DateTimeFormat("en-KE", {
-  dateStyle: "medium",
-  timeStyle: "short",
-}).format(new Date(value));
-
+const money = (minor: number, currency = "KES") => new Intl.NumberFormat("en-KE", { style: "currency", currency, minimumFractionDigits: 0, maximumFractionDigits: 2 }).format(minor / 100);
+const dateTime = (value: string) => new Intl.DateTimeFormat("en-KE", { dateStyle: "medium", timeStyle: "short" }).format(new Date(value));
 const label = (value: string) => value.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
-const whatsapp = (phone: string, reference?: string) => {
-  const text = reference ? `Hello, I am following up on your Asili order ${reference}.` : "Hello from Asili.";
-  return `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(text)}`;
-};
+const whatsapp = (phone: string, reference?: string) => `https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(reference ? `Hello, I am following up on your Asili order ${reference}.` : "Hello from Asili.")}`;
 
 async function api<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
@@ -75,184 +60,178 @@ async function api<T>(url: string, init?: RequestInit): Promise<T> {
   return body as T;
 }
 
-function StatusBadge({ value }: { value: string }) {
+function Badge({ value }: { value: string }) {
   return <span className="rounded-full bg-asili-green/8 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-asili-green">{label(value)}</span>;
 }
 
 export default function AdminApp() {
   const [session, setSession] = useState<SessionData | null>(null);
-  const [checkingSession, setCheckingSession] = useState(true);
+  const [checking, setChecking] = useState(true);
   const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [orders, setOrders] = useState<AdminOrder[]>([]);
+  const [inventory, setInventory] = useState<InventoryData>({ products: [] });
+  const [customers, setCustomers] = useState<CustomerSummary[]>([]);
   const [selectedOrder, setSelectedOrder] = useState<AdminOrder | null>(null);
-  const [view, setView] = useState<"dashboard" | "orders">("dashboard");
+  const [view, setView] = useState<View>("dashboard");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
 
   const signOutLocally = useCallback(() => {
-    setSession(null);
-    setDashboard(null);
-    setOrders([]);
-    setSelectedOrder(null);
+    setSession(null); setDashboard(null); setOrders([]); setInventory({ products: [] }); setCustomers([]); setSelectedOrder(null);
   }, []);
 
-  const loadAdminData = useCallback(async () => {
-    setLoading(true);
-    setError("");
+  const loadAll = useCallback(async () => {
+    setLoading(true); setError("");
     try {
-      const [dashboardData, orderData] = await Promise.all([
-        api<DashboardData>("/api/admin/dashboard"),
-        api<{ orders: AdminOrder[] }>("/api/admin/orders"),
+      const [dashboardData, orderData, inventoryData, customerData] = await Promise.all([
+        api<DashboardData>("/api/admin/dashboard"), api<{ orders: AdminOrder[] }>("/api/admin/orders"),
+        api<InventoryData>("/api/admin/inventory"), api<{ customers: CustomerSummary[] }>("/api/admin/customers"),
       ]);
-      setDashboard(dashboardData);
-      setOrders(orderData.orders);
+      setDashboard(dashboardData); setOrders(orderData.orders); setInventory(inventoryData); setCustomers(customerData.customers);
     } catch (requestError) {
       if (requestError instanceof Error && requestError.message === "UNAUTHENTICATED") signOutLocally();
       else setError(requestError instanceof Error ? requestError.message : "Unable to load admin data.");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   }, [signOutLocally]);
 
+  useEffect(() => { api<SessionData>("/api/admin/auth/session").then(setSession).catch(signOutLocally).finally(() => setChecking(false)); }, [signOutLocally]);
+  useEffect(() => { if (session) void loadAll(); }, [session, loadAll]);
   useEffect(() => {
-    api<SessionData>("/api/admin/auth/session")
-      .then(setSession)
-      .catch(() => signOutLocally())
-      .finally(() => setCheckingSession(false));
-  }, [signOutLocally]);
-
-  useEffect(() => {
-    if (session) void loadAdminData();
-  }, [session, loadAdminData]);
+    const reference = new URLSearchParams(window.location.search).get("order");
+    if (session && reference) void openOrder(reference);
+    // The deep link is consumed once after authentication.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
 
   const login = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setLoading(true);
-    setError("");
+    event.preventDefault(); setLoading(true); setError("");
     const data = new FormData(event.currentTarget);
-    try {
-      const nextSession = await api<SessionData>("/api/admin/auth/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: data.get("email"), password: data.get("password") }),
-      });
-      setSession(nextSession);
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to sign in.");
-    } finally {
-      setLoading(false);
-    }
+    try { setSession(await api<SessionData>("/api/admin/auth/login", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ email: data.get("email"), password: data.get("password") }) })); }
+    catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to sign in."); }
+    finally { setLoading(false); }
   };
 
   const logout = async () => {
     if (!session) return;
-    try {
-      await api("/api/admin/auth/logout", { method: "POST", headers: { "X-CSRF-Token": session.csrfToken } });
-    } finally {
-      signOutLocally();
-    }
+    try { await api("/api/admin/auth/logout", { method: "POST", headers: { "X-CSRF-Token": session.csrfToken } }); }
+    finally { signOutLocally(); }
   };
 
   const openOrder = async (reference: string) => {
-    setLoading(true);
-    setError("");
-    try {
-      const result = await api<{ order: AdminOrder }>(`/api/admin/orders/${encodeURIComponent(reference)}`);
-      setSelectedOrder(result.order);
-      setView("orders");
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to load the order.");
-    } finally {
-      setLoading(false);
-    }
+    setLoading(true); setError("");
+    try { const result = await api<{ order: AdminOrder }>(`/api/admin/orders/${encodeURIComponent(reference)}`); setSelectedOrder(result.order); setView("orders"); }
+    catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to load the order."); }
+    finally { setLoading(false); }
   };
 
   const updateStatus = async (kind: StatusKind, value: string) => {
     if (!session || !selectedOrder) return;
-    setLoading(true);
-    setError("");
+    setLoading(true); setError("");
     try {
-      const result = await api<{ order: AdminOrder }>(`/api/admin/orders/${encodeURIComponent(selectedOrder.orderReference)}/statuses`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrfToken },
-        body: JSON.stringify({ [kind]: value }),
-      });
-      setSelectedOrder(result.order);
-      await loadAdminData();
-    } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : "Unable to update the order.");
-    } finally {
-      setLoading(false);
-    }
+      const result = await api<{ order: AdminOrder }>(`/api/admin/orders/${encodeURIComponent(selectedOrder.orderReference)}/statuses`, { method: "PATCH", headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrfToken }, body: JSON.stringify({ [kind]: value }) });
+      setSelectedOrder(result.order); await loadAll();
+    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to update the order."); }
+    finally { setLoading(false); }
   };
 
-  if (checkingSession) return <div className="flex min-h-screen items-center justify-center bg-asili-cream text-asili-green"><LoaderCircle className="h-8 w-8 animate-spin" aria-label="Checking session" /></div>;
+  const filterOrders = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); setLoading(true); setError("");
+    const query = new URLSearchParams();
+    for (const [key, value] of new FormData(event.currentTarget)) if (String(value).trim()) query.set(key, String(value).trim());
+    try { setOrders((await api<{ orders: AdminOrder[] }>(`/api/admin/orders?${query}`)).orders); }
+    catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to filter orders."); }
+    finally { setLoading(false); }
+  };
 
-  if (!session) {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-asili-green px-5 py-12">
-        <section className="w-full max-w-md rounded-[2rem] bg-asili-cream p-8 shadow-2xl sm:p-10">
-          <p className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">Asili Business Helper</p>
-          <h1 className="mt-4 text-4xl text-asili-green">Owner sign in</h1>
-          <p className="mt-3 text-sm leading-relaxed text-asili-green/65">Secure access for authorised Asili operations.</p>
-          <form className="mt-8 space-y-5" onSubmit={login}>
-            <label className="block text-sm font-bold text-asili-green">Email<input name="email" type="email" required autoComplete="username" className="mt-2 w-full rounded-xl border border-asili-green/15 bg-white px-4 py-3 font-normal outline-none focus:border-asili-honey" /></label>
-            <label className="block text-sm font-bold text-asili-green">Password<input name="password" type="password" required autoComplete="current-password" className="mt-2 w-full rounded-xl border border-asili-green/15 bg-white px-4 py-3 font-normal outline-none focus:border-asili-honey" /></label>
-            {error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}
-            <button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-full bg-asili-honey px-6 py-3.5 text-sm font-black text-asili-green disabled:opacity-60">{loading && <LoaderCircle className="h-4 w-4 animate-spin" />} Sign in</button>
-          </form>
-          <a href="/" className="mt-6 inline-flex items-center gap-2 text-xs font-bold text-asili-green/60"><ArrowLeft className="h-4 w-4" /> Return to Asili</a>
-        </section>
-      </main>
-    );
-  }
+  const recordSale = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault(); if (!session) return;
+    setLoading(true); setError(""); setNotice("");
+    const form = event.currentTarget; const data = new FormData(form);
+    try {
+      const result = await api<{ order: AdminOrder }>("/api/admin/sales", { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrfToken }, body: JSON.stringify({
+        source: data.get("source"), customerName: data.get("customerName"), customerPhone: data.get("customerPhone"), variantId: data.get("variantId"),
+        quantity: Number(data.get("quantity")), unitPriceMinor: Math.round(Number(data.get("salePrice")) * 100), paymentStatus: data.get("paymentStatus"), paymentMethod: data.get("paymentMethod"), note: data.get("note"), deliveryLocation: data.get("deliveryLocation"),
+      }) });
+      setNotice(`Sale recorded as ${result.order.orderReference}.`); form.reset(); await loadAll();
+    } catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to record sale."); }
+    finally { setLoading(false); }
+  };
 
-  const metrics = dashboard?.metrics;
+  const adjustInventory = async (variantId: string, payload: object) => {
+    if (!session) return;
+    setLoading(true); setError(""); setNotice("");
+    try { await api(`/api/admin/inventory/${encodeURIComponent(variantId)}/movements`, { method: "POST", headers: { "Content-Type": "application/json", "X-CSRF-Token": session.csrfToken }, body: JSON.stringify(payload) }); setNotice("Inventory updated and movement recorded."); await loadAll(); }
+    catch (requestError) { setError(requestError instanceof Error ? requestError.message : "Unable to update inventory."); }
+    finally { setLoading(false); }
+  };
+
+  if (checking) return <div className="flex min-h-screen items-center justify-center bg-asili-cream text-asili-green"><LoaderCircle className="h-8 w-8 animate-spin" /></div>;
+  if (!session) return <Login loading={loading} error={error} onSubmit={login} />;
+
+  const variants = inventory.products.flatMap((product) => product.variants.map((variant) => ({ ...variant, productName: product.name })));
   return (
     <div className="min-h-screen bg-[#f3efe5] text-asili-green">
-      <header className="sticky top-0 z-20 border-b border-asili-green/10 bg-asili-cream/95 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6">
-          <div><p className="text-[9px] font-black uppercase tracking-[0.25em] text-asili-earth">Asili</p><p className="font-serif text-xl">Business Helper</p></div>
-          <div className="flex items-center gap-2"><button onClick={() => void loadAdminData()} className="rounded-full border border-asili-green/15 p-2.5" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button><button onClick={() => void logout()} className="flex items-center gap-2 rounded-full bg-asili-green px-4 py-2.5 text-xs font-bold text-white"><LogOut className="h-4 w-4" /> Logout</button></div>
-        </div>
-      </header>
+      <header className="sticky top-0 z-20 border-b border-asili-green/10 bg-asili-cream/95 backdrop-blur"><div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6"><div><p className="text-[9px] font-black uppercase tracking-[0.25em] text-asili-earth">Asili</p><p className="font-serif text-xl">Business Helper</p></div><div className="flex gap-2"><button onClick={() => void loadAll()} className="rounded-full border border-asili-green/15 p-2.5" aria-label="Refresh"><RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} /></button><button onClick={() => void logout()} className="flex items-center gap-2 rounded-full bg-asili-green px-4 py-2.5 text-xs font-bold text-white"><LogOut className="h-4 w-4" /> Logout</button></div></div></header>
       <div className="mx-auto grid max-w-7xl gap-6 px-4 py-6 sm:px-6 lg:grid-cols-[13rem_1fr]">
-        <nav className="flex gap-2 lg:flex-col" aria-label="Admin navigation">
-          <button onClick={() => { setView("dashboard"); setSelectedOrder(null); }} className={`flex flex-1 items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold lg:flex-none ${view === "dashboard" ? "bg-asili-green text-white" : "bg-white"}`}><LayoutDashboard className="h-4 w-4" /> Overview</button>
-          <button onClick={() => { setView("orders"); setSelectedOrder(null); }} className={`flex flex-1 items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold lg:flex-none ${view === "orders" ? "bg-asili-green text-white" : "bg-white"}`}><ShoppingBag className="h-4 w-4" /> Orders</button>
+        <nav className="flex gap-2 overflow-x-auto pb-1 lg:flex-col" aria-label="Admin navigation">
+          {([{ key: "dashboard", title: "Overview", icon: LayoutDashboard }, { key: "orders", title: "Orders", icon: ShoppingBag }, { key: "sale", title: "Record sale", icon: PlusCircle }, { key: "inventory", title: "Inventory", icon: Package }, { key: "customers", title: "Customers", icon: Users }] as const).map(({ key, title, icon: Icon }) => <button key={key} onClick={() => { setView(key); setSelectedOrder(null); setError(""); setNotice(""); }} className={`flex shrink-0 items-center gap-2 rounded-xl px-4 py-3 text-sm font-bold lg:w-full ${view === key ? "bg-asili-green text-white" : "bg-white"}`}><Icon className="h-4 w-4" /> {title}</button>)}
         </nav>
-        <main>
-          {error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}
-          {view === "dashboard" && (
-            <div className="space-y-6">
-              <div><p className="text-xs font-black uppercase tracking-[0.2em] text-asili-earth">Operations</p><h1 className="mt-2 text-3xl sm:text-4xl">Owner dashboard</h1></div>
-              <section className="grid grid-cols-2 gap-3 lg:grid-cols-5">
-                {[["Total orders", metrics?.totalOrders], ["New orders", metrics?.newOrders], ["Confirmed", metrics?.confirmedOrders], ["Pending payments", metrics?.pendingPayments], ["Pending delivery", metrics?.pendingDeliveries]].map(([title, value]) => <article key={String(title)} className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-semibold text-asili-green/55">{title}</p><p className="mt-2 text-3xl font-bold">{value ?? "—"}</p></article>)}
-              </section>
-              <section className="grid gap-6 xl:grid-cols-2">
-                <article className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 text-xl"><ShoppingBag className="h-5 w-5 text-asili-earth" /> Recent orders</h2><OrderTable orders={dashboard?.recentOrders ?? []} onOpen={openOrder} /></article>
-                <article className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 text-xl"><Users className="h-5 w-5 text-asili-earth" /> Recent customers</h2><div className="mt-4 divide-y divide-asili-green/10">{dashboard?.recentCustomers.length ? dashboard.recentCustomers.map((customer) => <div key={`${customer.phone}-${customer.createdAt}`} className="py-3"><div className="flex justify-between gap-3"><div><p className="font-bold">{customer.name}</p><p className="text-xs text-asili-green/55">{customer.phone} · {customer.location ?? "No location"}</p></div><span className="text-xs font-bold">{customer.orderCount} order{customer.orderCount === 1 ? "" : "s"}</span></div></div>) : <Empty text="No customers yet." />}</div></article>
-              </section>
-              <section className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="flex items-center gap-2 text-xl"><Package className="h-5 w-5 text-asili-earth" /> Product availability</h2><div className="mt-4 grid gap-3 sm:grid-cols-2">{dashboard?.products.flatMap((product) => product.variants.map((variant) => <div key={variant.sku} className="rounded-xl border border-asili-green/10 p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-bold">{product.name} · {variant.name}</p><p className="mt-1 font-mono text-xs text-asili-green/50">{variant.sku}</p></div><StatusBadge value={variant.active && product.active ? "active" : "inactive"} /></div><p className="mt-3 text-sm">{money(variant.unitPriceMinor, variant.currency)} · Stock: {variant.stockQuantity === null ? "Unconfirmed" : variant.stockQuantity}</p></div>))}</div></section>
-            </div>
-          )}
-          {view === "orders" && !selectedOrder && <section><p className="text-xs font-black uppercase tracking-[0.2em] text-asili-earth">Operations</p><h1 className="mt-2 text-3xl sm:text-4xl">Orders</h1><div className="mt-6 rounded-2xl bg-white p-5 shadow-sm"><OrderTable orders={orders} onOpen={openOrder} /></div></section>}
+        <main>{error && <p role="alert" className="mb-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</p>}{notice && <p role="status" className="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-900">{notice}</p>}
+          {view === "dashboard" && <Overview data={dashboard} onOpen={openOrder} />}
+          {view === "orders" && !selectedOrder && <OrdersView orders={orders} onFilter={filterOrders} onOpen={openOrder} />}
           {view === "orders" && selectedOrder && <OrderDetail order={selectedOrder} loading={loading} onBack={() => setSelectedOrder(null)} onStatus={updateStatus} />}
+          {view === "sale" && <RecordSale variants={variants} loading={loading} onSubmit={recordSale} />}
+          {view === "inventory" && <InventoryView data={inventory} loading={loading} onAdjust={adjustInventory} />}
+          {view === "customers" && <CustomersView customers={customers} />}
         </main>
       </div>
     </div>
   );
 }
 
-function Empty({ text }: { text: string }) { return <p className="py-8 text-center text-sm text-asili-green/50">{text}</p>; }
+function Login({ loading, error, onSubmit }: { loading: boolean; error: string; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return <main className="flex min-h-screen items-center justify-center bg-asili-green px-5 py-12"><section className="w-full max-w-md rounded-[2rem] bg-asili-cream p-8 shadow-2xl sm:p-10"><p className="text-[10px] font-black uppercase tracking-[0.3em] text-asili-earth">Asili Business Helper</p><h1 className="mt-4 text-4xl">Owner sign in</h1><p className="mt-3 text-sm text-asili-green/65">Secure access for authorised Asili operations.</p><form className="mt-8 space-y-5" onSubmit={onSubmit}><Field name="email" title="Email" type="email" required /><Field name="password" title="Password" type="password" required />{error && <p role="alert" className="rounded-xl bg-red-50 p-3 text-sm text-red-800">{error}</p>}<button disabled={loading} className="flex w-full items-center justify-center gap-2 rounded-full bg-asili-honey px-6 py-3.5 text-sm font-black disabled:opacity-60">{loading && <LoaderCircle className="h-4 w-4 animate-spin" />} Sign in</button></form><a href="/" className="mt-6 inline-flex items-center gap-2 text-xs font-bold text-asili-green/60"><ArrowLeft className="h-4 w-4" /> Return to Asili</a></section></main>;
+}
+
+function Overview({ data, onOpen }: { data: DashboardData | null; onOpen: (reference: string) => void }) {
+  const metrics = data?.metrics;
+  return <div className="space-y-6"><Heading eyebrow="Operations" title="Owner dashboard" /><section className="grid grid-cols-2 gap-3 lg:grid-cols-5">{[["Total sales", metrics?.totalOrders], ["New orders", metrics?.newOrders], ["Confirmed", metrics?.confirmedOrders], ["Pending payments", metrics?.pendingPayments], ["Pending delivery", metrics?.pendingDeliveries]].map(([title, value]) => <article key={String(title)} className="rounded-2xl bg-white p-4 shadow-sm"><p className="text-xs font-semibold text-asili-green/55">{title}</p><p className="mt-2 text-3xl font-bold">{value ?? "—"}</p></article>)}</section><section className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="text-xl">Recent sales</h2><OrderTable orders={data?.recentOrders ?? []} onOpen={onOpen} /></section></div>;
+}
+
+function OrdersView({ orders, onFilter, onOpen }: { orders: AdminOrder[]; onFilter: (event: FormEvent<HTMLFormElement>) => void; onOpen: (reference: string) => void }) {
+  return <section><Heading eyebrow="Online and offline" title="Orders & sales" /><form onSubmit={onFilter} className="mt-6 grid gap-3 rounded-2xl bg-white p-4 shadow-sm md:grid-cols-5"><label className="relative md:col-span-2"><Search className="absolute left-3 top-3.5 h-4 w-4 text-asili-green/40" /><input name="search" placeholder="Reference, customer or phone" className="w-full rounded-xl border border-asili-green/15 py-3 pl-10 pr-3 text-sm" /></label><Filter name="orderStatus" title="Order status" values={statusOptions.orderStatus} /><Filter name="paymentStatus" title="Payment" values={statusOptions.paymentStatus} /><Filter name="deliveryStatus" title="Delivery" values={statusOptions.deliveryStatus} /><Filter name="source" title="Source" values={["website", "manual", "whatsapp", "phone", "walk_in"]} /><button className="rounded-xl bg-asili-green px-4 py-3 text-sm font-bold text-white">Apply filters</button></form><div className="mt-5 rounded-2xl bg-white p-5 shadow-sm"><OrderTable orders={orders} onOpen={onOpen} /></div></section>;
+}
+
+function RecordSale({ variants, loading, onSubmit }: { variants: Array<Variant & { productName: string }>; loading: boolean; onSubmit: (event: FormEvent<HTMLFormElement>) => void }) {
+  return <section><Heading eyebrow="Offline transaction" title="Record sale" /><form onSubmit={onSubmit} className="mt-6 grid max-w-3xl gap-4 rounded-2xl bg-white p-5 shadow-sm sm:grid-cols-2"><Filter name="source" title="Sale channel" values={["walk_in", "whatsapp", "phone", "manual"]} required /><Field name="customerName" title="Customer name (optional)" /><Field name="customerPhone" title="Kenyan phone (optional)" /><label className="text-sm font-bold sm:col-span-2">Product variant<select name="variantId" required className="mt-2 w-full rounded-xl border border-asili-green/15 bg-white px-3 py-3 font-normal"><option value="">Choose a variant</option>{variants.map((variant) => <option key={variant.id} value={variant.id}>{variant.productName} · {variant.name} · {money(variant.unitPriceMinor, variant.currency)} · stock {variant.stockQuantity ?? "unconfirmed"}</option>)}</select></label><Field name="quantity" title="Quantity" type="number" min="1" required /><Field name="salePrice" title="Unit sale price (KES)" type="number" min="0" step="0.01" required /><Filter name="paymentStatus" title="Payment status" values={statusOptions.paymentStatus} required /><Field name="paymentMethod" title="Payment method" placeholder="Cash, M-Pesa, bank…" required /><Field name="deliveryLocation" title="Delivery/location (optional)" /><Field name="note" title="Note (optional)" /><button disabled={loading || !variants.length} className="rounded-full bg-asili-honey px-6 py-3.5 text-sm font-black sm:col-span-2 disabled:opacity-50">Record sale</button></form></section>;
+}
+
+function InventoryView({ data, loading, onAdjust }: { data: InventoryData; loading: boolean; onAdjust: (variantId: string, payload: object) => void }) {
+  return <section><Heading eyebrow="Stock ledger" title="Inventory" /><p className="mt-3 max-w-2xl text-sm text-asili-green/65">Unconfirmed means no opening quantity has been established. Zero means confirmed out of stock.</p><div className="mt-6 space-y-5">{data.products.flatMap((product) => product.variants.map((variant) => <div key={variant.id}><InventoryCard product={product.name} variant={variant} loading={loading} onAdjust={onAdjust} /></div>))}</div></section>;
+}
+
+function InventoryCard({ product, variant, loading, onAdjust }: { product: string; variant: Variant; loading: boolean; onAdjust: (variantId: string, payload: object) => void }) {
+  const [action, setAction] = useState(variant.stockQuantity === null ? "opening_stock" : "stock_received");
+  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); const data = new FormData(event.currentTarget); onAdjust(variant.id, { action, quantity: data.get("quantity") === "" ? undefined : Number(data.get("quantity")), stockAfter: data.get("stockAfter") === "" ? undefined : Number(data.get("stockAfter")), reason: data.get("reason") }); };
+  return <article className="rounded-2xl bg-white p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-xl">{product} · {variant.name}</h2><p className="mt-1 font-mono text-xs text-asili-green/50">{variant.sku}</p></div><div className="text-right"><p className="text-xs text-asili-green/50">Current stock</p><p className="text-2xl font-black">{variant.stockQuantity === null ? "Unconfirmed" : variant.stockQuantity}</p></div></div><form onSubmit={submit} className="mt-5 grid gap-3 sm:grid-cols-4"><label className="text-xs font-bold">Action<select value={action} onChange={(event) => setAction(event.target.value)} className="mt-2 w-full rounded-xl border border-asili-green/15 px-3 py-3 text-sm"><option value="opening_stock">Set opening stock</option><option value="stock_received">Receive stock</option><option value="damage">Damage/loss</option><option value="correction">Correction</option><option value="return">Return to stock</option><option value="stock_unconfirmed">Set unconfirmed</option></select></label>{action === "correction" ? <Field name="stockAfter" title="Corrected stock" type="number" min="0" required /> : action !== "stock_unconfirmed" ? <Field name="quantity" title="Quantity" type="number" min={action === "opening_stock" ? "0" : "1"} required /> : <div />}<Field name="reason" title="Reason / note" required /><button disabled={loading} className="self-end rounded-xl bg-asili-green px-4 py-3 text-sm font-bold text-white">Save movement</button></form>{Boolean(variant.inventoryMovements?.length) && <details className="mt-5 border-t border-asili-green/10 pt-4"><summary className="cursor-pointer text-sm font-bold">Recent movement history</summary><div className="mt-3 divide-y divide-asili-green/10">{variant.inventoryMovements?.map((movement) => <div key={movement.id} className="grid gap-1 py-3 text-xs sm:grid-cols-[8rem_1fr_auto]"><Badge value={movement.type} /><span>{movement.reason}{movement.order ? ` · ${movement.order.orderNumber}` : ""}</span><span className="font-mono">{movement.stockBefore ?? "?"} → {movement.stockAfter ?? "?"}</span></div>)}</div></details>}</article>;
+}
+
+function CustomersView({ customers }: { customers: CustomerSummary[] }) {
+  return <section><Heading eyebrow="Customer history" title="Customers" /><div className="mt-6 overflow-x-auto rounded-2xl bg-white p-5 shadow-sm"><table className="w-full min-w-[48rem] text-left text-sm"><thead className="text-[10px] uppercase tracking-wide text-asili-green/45"><tr><th className="pb-3">Customer</th><th className="pb-3">Contact</th><th className="pb-3">Orders</th><th className="pb-3">Product spend</th><th className="pb-3">Last order</th><th className="pb-3">Source</th><th /></tr></thead><tbody className="divide-y divide-asili-green/10">{customers.map((customer, index) => <tr key={`${customer.phone}-${index}`}><td className="py-3 font-bold">{customer.name}</td><td className="py-3 text-xs">{customer.phone ?? "No phone"}<br />{customer.email ?? ""}</td><td className="py-3">{customer.orderCount}</td><td className="py-3 font-bold">{money(customer.totalProductSpendMinor)}</td><td className="py-3 text-xs">{customer.lastOrderAt ? dateTime(customer.lastOrderAt) : "—"}</td><td className="py-3">{customer.latestOrderSource ? <Badge value={customer.latestOrderSource} /> : "—"}</td><td className="py-3">{customer.phone && <a href={whatsapp(customer.phone)} target="_blank" rel="noopener noreferrer" className="font-bold text-emerald-700">WhatsApp</a>}</td></tr>)}</tbody></table>{!customers.length && <Empty text="No customers yet." />}</div></section>;
+}
 
 function OrderTable({ orders, onOpen }: { orders: AdminOrder[]; onOpen: (reference: string) => void }) {
-  if (!orders.length) return <Empty text="No orders yet." />;
-  return <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[36rem] text-left text-sm"><thead className="text-[10px] uppercase tracking-wide text-asili-green/45"><tr><th className="pb-3">Reference</th><th className="pb-3">Customer</th><th className="pb-3">Total</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody className="divide-y divide-asili-green/10">{orders.map((order) => <tr key={order.orderReference} className="cursor-pointer hover:bg-asili-cream" onClick={() => onOpen(order.orderReference)}><td className="py-3 font-mono text-xs font-bold">{order.orderReference}</td><td className="py-3">{order.customer.name}</td><td className="py-3 font-bold">{money(order.totalAmountMinor, order.currency)}</td><td className="py-3"><StatusBadge value={order.orderStatus} /></td><td className="py-3 text-xs text-asili-green/55">{dateTime(order.createdAt)}</td></tr>)}</tbody></table></div>;
+  if (!orders.length) return <Empty text="No matching orders." />;
+  return <div className="mt-4 overflow-x-auto"><table className="w-full min-w-[42rem] text-left text-sm"><thead className="text-[10px] uppercase tracking-wide text-asili-green/45"><tr><th className="pb-3">Reference</th><th className="pb-3">Source</th><th className="pb-3">Customer</th><th className="pb-3">Total</th><th className="pb-3">Status</th><th className="pb-3">Created</th></tr></thead><tbody className="divide-y divide-asili-green/10">{orders.map((order) => <tr key={order.orderReference} className="cursor-pointer hover:bg-asili-cream" onClick={() => onOpen(order.orderReference)}><td className="py-3 font-mono text-xs font-bold">{order.orderReference}</td><td className="py-3"><Badge value={order.source} /></td><td className="py-3">{order.customer.name}</td><td className="py-3 font-bold">{money(order.totalAmountMinor, order.currency)}</td><td className="py-3"><Badge value={order.orderStatus} /></td><td className="py-3 text-xs text-asili-green/55">{dateTime(order.createdAt)}</td></tr>)}</tbody></table></div>;
 }
 
 function OrderDetail({ order, loading, onBack, onStatus }: { order: AdminOrder; loading: boolean; onBack: () => void; onStatus: (kind: StatusKind, value: string) => void }) {
-  return <section className="space-y-5"><button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-bold"><ArrowLeft className="h-4 w-4" /> All orders</button><div className="flex flex-wrap items-end justify-between gap-4"><div><p className="text-xs font-black uppercase tracking-[0.2em] text-asili-earth">Order detail</p><h1 className="mt-2 font-mono text-2xl font-bold sm:text-3xl">{order.orderReference}</h1></div><a href={whatsapp(order.customer.normalizedPhone, order.orderReference)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-3 text-sm font-black text-[#073b1a]">WhatsApp customer <ExternalLink className="h-4 w-4" /></a></div><div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]"><div className="space-y-5"><article className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="text-xl">Items</h2><div className="mt-4 divide-y divide-asili-green/10">{order.items.map((item, index) => <div key={`${item.sku}-${index}`} className="flex justify-between gap-4 py-4"><div><p className="font-bold">{item.productName} · {item.variantName}</p><p className="mt-1 font-mono text-xs text-asili-green/50">{item.sku ?? "No SKU"} · {item.quantity} × {money(item.unitPriceMinor, order.currency)}</p></div><p className="font-bold">{money(item.lineTotalMinor, order.currency)}</p></div>)}</div><div className="mt-4 space-y-2 border-t border-asili-green/15 pt-4 text-sm"><p className="flex justify-between"><span>Product subtotal</span><strong>{money(order.subtotalMinor, order.currency)}</strong></p><p className="flex justify-between"><span>Delivery fee</span><strong>{order.deliveryFeeMinor ? money(order.deliveryFeeMinor, order.currency) : "Confirm separately"}</strong></p><p className="flex justify-between text-base"><span>Total recorded</span><strong>{money(order.totalAmountMinor, order.currency)}</strong></p></div></article><article className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="text-xl">Customer & delivery</h2><dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><Info term="Name" value={order.customer.name} /><Info term="Phone" value={order.customer.normalizedPhone} /><Info term="Email" value={order.customer.email ?? "Not provided"} /><Info term="Delivery location" value={order.deliveryLocation} /><Info term="Customer note" value={order.customerNote ?? "No note"} /><Info term="Created" value={dateTime(order.createdAt)} /><Info term="Last updated" value={dateTime(order.updatedAt)} /></dl></article></div><aside className="rounded-2xl bg-asili-green p-5 text-white shadow-sm"><h2 className="text-xl">Update progress</h2><p className="mt-2 text-xs leading-relaxed text-white/60">Only forward operational transitions are accepted.</p><div className="mt-6 space-y-5">{(["orderStatus", "paymentStatus", "deliveryStatus"] as StatusKind[]).map((kind) => <label key={kind} className="block text-xs font-bold uppercase tracking-wide text-white/70">{label(kind)}<select value={order[kind]} disabled={loading} onChange={(event) => void onStatus(kind, event.target.value)} className="mt-2 w-full rounded-xl border border-white/15 bg-white px-3 py-3 text-sm font-semibold text-asili-green outline-none">{statusOptions[kind].map((option) => <option key={option} value={option}>{label(option)}</option>)}</select></label>)}</div></aside></div></section>;
+  return <section className="space-y-5"><button onClick={onBack} className="inline-flex items-center gap-2 text-sm font-bold"><ArrowLeft className="h-4 w-4" /> All orders</button><div className="flex flex-wrap items-end justify-between gap-4"><div><div className="flex items-center gap-2"><Badge value={order.source} /><p className="text-xs font-black uppercase tracking-[0.2em] text-asili-earth">Order detail</p></div><h1 className="mt-2 font-mono text-2xl font-bold sm:text-3xl">{order.orderReference}</h1></div>{order.customer.normalizedPhone && <a href={whatsapp(order.customer.normalizedPhone, order.orderReference)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-full bg-[#25D366] px-5 py-3 text-sm font-black text-[#073b1a]">WhatsApp customer <ExternalLink className="h-4 w-4" /></a>}</div><div className="grid gap-5 xl:grid-cols-[1.4fr_1fr]"><div className="space-y-5"><article className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="text-xl">Items</h2><div className="mt-4 divide-y divide-asili-green/10">{order.items.map((item, index) => <div key={`${item.sku}-${index}`} className="flex justify-between gap-4 py-4"><div><p className="font-bold">{item.productName} · {item.variantName}</p><p className="mt-1 font-mono text-xs text-asili-green/50">{item.sku ?? "No SKU"} · {item.quantity} × {money(item.unitPriceMinor, order.currency)}</p></div><p className="font-bold">{money(item.lineTotalMinor, order.currency)}</p></div>)}</div><div className="mt-4 space-y-2 border-t border-asili-green/15 pt-4 text-sm"><p className="flex justify-between"><span>Product subtotal</span><strong>{money(order.subtotalMinor, order.currency)}</strong></p><p className="flex justify-between"><span>Delivery fee</span><strong>{order.deliveryFeeMinor ? money(order.deliveryFeeMinor, order.currency) : "Confirm separately"}</strong></p><p className="flex justify-between"><span>Payment method</span><strong>{order.paymentMethod ?? "Not recorded"}</strong></p></div></article><article className="rounded-2xl bg-white p-5 shadow-sm"><h2 className="text-xl">Customer & delivery</h2><dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2"><Info term="Name" value={order.customer.name} /><Info term="Phone" value={order.customer.normalizedPhone ?? "Not provided"} /><Info term="Email" value={order.customer.email ?? "Not provided"} /><Info term="Delivery/location" value={order.deliveryLocation ?? "Not provided"} /><Info term="Note" value={order.customerNote ?? "No note"} /><Info term="Created" value={dateTime(order.createdAt)} /><Info term="Updated" value={dateTime(order.updatedAt)} /></dl></article></div><aside className="rounded-2xl bg-asili-green p-5 text-white"><h2 className="text-xl">Update progress</h2><div className="mt-6 space-y-5">{(["orderStatus", "paymentStatus", "deliveryStatus"] as StatusKind[]).map((kind) => <label key={kind} className="block text-xs font-bold uppercase tracking-wide text-white/70">{label(kind)}<select value={order[kind]} disabled={loading} onChange={(event) => void onStatus(kind, event.target.value)} className="mt-2 w-full rounded-xl bg-white px-3 py-3 text-sm font-semibold text-asili-green">{statusOptions[kind].map((option) => <option key={option} value={option}>{label(option)}</option>)}</select></label>)}</div></aside></div></section>;
 }
 
+function Heading({ eyebrow, title }: { eyebrow: string; title: string }) { return <div><p className="text-xs font-black uppercase tracking-[0.2em] text-asili-earth">{eyebrow}</p><h1 className="mt-2 text-3xl sm:text-4xl">{title}</h1></div>; }
+function Empty({ text }: { text: string }) { return <p className="py-8 text-center text-sm text-asili-green/50">{text}</p>; }
 function Info({ term, value }: { term: string; value: string }) { return <div><dt className="text-xs font-bold uppercase tracking-wide text-asili-green/45">{term}</dt><dd className="mt-1 break-words font-medium">{value}</dd></div>; }
+function Field(props: { name: string; title: string; type?: string; required?: boolean; min?: string; step?: string; placeholder?: string }) { return <label className="text-sm font-bold">{props.title}<input {...props} className="mt-2 w-full rounded-xl border border-asili-green/15 bg-white px-3 py-3 font-normal" /></label>; }
+function Filter({ name, title, values, required }: { name: string; title: string; values: string[]; required?: boolean }) { return <label className="text-xs font-bold">{title}<select name={name} required={required} className="mt-2 w-full rounded-xl border border-asili-green/15 bg-white px-3 py-3 text-sm font-normal"><option value="">{required ? "Choose" : "All"}</option>{values.map((value) => <option key={value} value={value}>{label(value)}</option>)}</select></label>; }
