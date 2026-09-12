@@ -113,7 +113,7 @@ Do not set `RUN_DATABASE_TESTS` in Railway and never create a `VITE_DATABASE_URL
 
 The Railway health check uses `/api/health/db`, so a deployment is not promoted unless both Express and PostgreSQL are ready. Its failure response is a generic `503` and does not expose database credentials or internal errors. `/api/health` remains a lightweight process-only check.
 
-Netlify remains the public static host. No Netlify `/api/*` proxy is configured yet, so the deployed public ordering form cannot reach Railway until an approved API routing or base-URL deployment batch is completed.
+Netlify remains the public static host. The root `netlify.toml` proxies same-origin `/api/*` requests to the Railway API while preserving the public site's relative API URLs. The proxy rule must remain before any future SPA catch-all redirect.
 
 ## Production checks
 
