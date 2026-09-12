@@ -1,0 +1,353 @@
+import { randomBytes } from "node:crypto";
+import {
+  Prisma,
+  type DeliveryStatus,
+  type OrderStatus,
+  type PaymentStatus,
+} from "@prisma/client";
+import { prisma } from "../db/client";
+
+const MAX_POSTGRES_INTEGER = 2_147_483_647;
+const ORDER_REFERENCE_ATTEMPTS = 3;
+
+export interface PublicVariant {
+  id: string;
+  sku: string;
+  name: string;
+  priceMinor: number;
+  currency: string;
+  availableStock: number;
+}
+
+export interface PublicProduct {
+  slug: string;
+  name: string;
+  description: string | null;
+  variants: PublicVariant[];
+}
+
+export interface CreateOrderInput {
+  customer: {
+    name: string;
+    phone: string;
+    email?: string;
+  };
+  deliveryLocation: string;
+  customerNote?: string;
+  items: Array<{
+    variantId: string;
+    quantity: number;
+  }>;
+}
+
+export interface PublicOrder {
+  orderReference: string;
+  status: string;
+  paymentStatus: string;
+  deliveryStatus: string;
+  currency: string;
+  subtotalMinor: number;
+  deliveryFeeMinor: number;
+  totalAmountMinor: number;
+  customer: {
+    name: string;
+    phone: string;
+    email: string | null;
+  };
+  deliveryLocation: string;
+  customerNote: string | null;
+  items: Array<{
+    variantId: string | null;
+    sku: string | null;
+    productName: string;
+    variantName: string;
+    quantity: number;
+    unitPriceMinor: number;
+    lineTotalMinor: number;
+  }>;
+}
+
+export interface BusinessService {
+  listProducts(): Promise<PublicProduct[]>;
+  getProductBySlug(slug: string): Promise<PublicProduct | null>;
+  createOrder(input: CreateOrderInput): Promise<PublicOrder>;
+}
+
+export class ProductUnavailableError extends Error {
+  constructor() {
+    super("One or more products are unavailable.");
+    this.name = "ProductUnavailableError";
+  }
+}
+
+export class InsufficientStockError extends Error {
+  constructor() {
+    super("There is not enough stock to complete this order.");
+    this.name = "InsufficientStockError";
+  }
+}
+
+export class MixedCurrencyError extends Error {
+  constructor() {
+    super("All order items must use the same currency.");
+    this.name = "MixedCurrencyError";
+  }
+}
+
+export class InvalidOrderTotalError extends Error {
+  constructor() {
+    super("The calculated order total is outside the supported range.");
+    this.name = "InvalidOrderTotalError";
+  }
+}
+
+const publicProductSelection = {
+  slug: true,
+  name: true,
+  description: true,
+  variants: {
+    where: { active: true },
+    orderBy: { name: "asc" as const },
+    select: {
+      id: true,
+      sku: true,
+      name: true,
+      unitPriceMinor: true,
+      currency: true,
+      stockQuantity: true,
+    },
+  },
+};
+
+function toPublicProduct(product: {
+  slug: string;
+  name: string;
+  description: string | null;
+  variants: Array<{
+    id: string;
+    sku: string;
+    name: string;
+    unitPriceMinor: number;
+    currency: string;
+    stockQuantity: number;
+  }>;
+}): PublicProduct {
+  return {
+    slug: product.slug,
+    name: product.name,
+    description: product.description,
+    variants: product.variants.map((variant) => ({
+      id: variant.id,
+      sku: variant.sku,
+      name: variant.name,
+      priceMinor: variant.unitPriceMinor,
+      currency: variant.currency,
+      availableStock: variant.stockQuantity,
+    })),
+  };
+}
+
+function nairobiDateStamp() {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Africa/Nairobi",
+    year: "2-digit",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(new Date());
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value ?? "00";
+
+  return `${value("year")}${value("month")}${value("day")}`;
+}
+
+function createOrderReference() {
+  const configuredPrefix = process.env.ORDER_REFERENCE_PREFIX?.trim().toUpperCase();
+  const prefix = configuredPrefix && /^[A-Z0-9]{2,10}$/.test(configuredPrefix)
+    ? configuredPrefix
+    : "ASILI";
+  const randomSuffix = randomBytes(3).toString("hex").toUpperCase();
+  return `${prefix}-${nairobiDateStamp()}-${randomSuffix}`;
+}
+
+function statusValue(status: OrderStatus | PaymentStatus | DeliveryStatus) {
+  return status.toLowerCase();
+}
+
+function isRetryableTransactionError(error: unknown) {
+  return error instanceof Prisma.PrismaClientKnownRequestError
+    && (error.code === "P2002" || error.code === "P2034");
+}
+
+export const businessService: BusinessService = {
+  async listProducts() {
+    const products = await prisma.product.findMany({
+      where: {
+        active: true,
+        variants: { some: { active: true } },
+      },
+      orderBy: { name: "asc" },
+      select: publicProductSelection,
+    });
+
+    return products.map(toPublicProduct);
+  },
+
+  async getProductBySlug(slug) {
+    const product = await prisma.product.findFirst({
+      where: {
+        slug,
+        active: true,
+        variants: { some: { active: true } },
+      },
+      select: publicProductSelection,
+    });
+
+    return product ? toPublicProduct(product) : null;
+  },
+
+  async createOrder(input) {
+    for (let attempt = 1; attempt <= ORDER_REFERENCE_ATTEMPTS; attempt += 1) {
+      const orderReference = createOrderReference();
+
+      try {
+        return await prisma.$transaction(async (transaction) => {
+          const requestedItems = [...input.items].sort((left, right) =>
+            left.variantId.localeCompare(right.variantId),
+          );
+          const variants = await transaction.productVariant.findMany({
+            where: { id: { in: requestedItems.map((item) => item.variantId) } },
+            select: {
+              id: true,
+              name: true,
+              sku: true,
+              unitPriceMinor: true,
+              currency: true,
+              active: true,
+              product: {
+                select: { name: true, active: true },
+              },
+            },
+          });
+
+          const variantsById = new Map(variants.map((variant) => [variant.id, variant]));
+          const lineItems = requestedItems.map((item) => {
+            const variant = variantsById.get(item.variantId);
+            if (!variant?.active || !variant.product.active) {
+              throw new ProductUnavailableError();
+            }
+
+            const lineTotalMinor = variant.unitPriceMinor * item.quantity;
+            if (!Number.isSafeInteger(lineTotalMinor) || lineTotalMinor > MAX_POSTGRES_INTEGER) {
+              throw new InvalidOrderTotalError();
+            }
+
+            return { ...item, variant, lineTotalMinor };
+          });
+
+          const currencies = new Set(lineItems.map((item) => item.variant.currency));
+          if (currencies.size !== 1) {
+            throw new MixedCurrencyError();
+          }
+
+          const subtotalMinor = lineItems.reduce((total, item) => total + item.lineTotalMinor, 0);
+          if (!Number.isSafeInteger(subtotalMinor) || subtotalMinor > MAX_POSTGRES_INTEGER) {
+            throw new InvalidOrderTotalError();
+          }
+
+          for (const item of lineItems) {
+            const stockUpdate = await transaction.productVariant.updateMany({
+              where: {
+                id: item.variantId,
+                active: true,
+                stockQuantity: { gte: item.quantity },
+                product: { active: true },
+              },
+              data: { stockQuantity: { decrement: item.quantity } },
+            });
+
+            if (stockUpdate.count !== 1) {
+              throw new InsufficientStockError();
+            }
+          }
+
+          const customer = await transaction.customer.upsert({
+            where: { normalizedPhone: input.customer.phone },
+            update: {
+              name: input.customer.name,
+              phone: input.customer.phone,
+              email: input.customer.email,
+              location: input.deliveryLocation,
+            },
+            create: {
+              name: input.customer.name,
+              phone: input.customer.phone,
+              normalizedPhone: input.customer.phone,
+              email: input.customer.email,
+              location: input.deliveryLocation,
+            },
+          });
+
+          const order = await transaction.order.create({
+            data: {
+              orderNumber: orderReference,
+              customerId: customer.id,
+              currency: lineItems[0].variant.currency,
+              subtotalMinor,
+              totalAmountMinor: subtotalMinor,
+              deliveryArea: input.deliveryLocation,
+              customerNote: input.customerNote,
+              items: {
+                create: lineItems.map((item) => ({
+                  productVariantId: item.variant.id,
+                  productNameSnapshot: item.variant.product.name,
+                  variantNameSnapshot: item.variant.name,
+                  skuSnapshot: item.variant.sku,
+                  unitPriceMinor: item.variant.unitPriceMinor,
+                  quantity: item.quantity,
+                  lineTotalMinor: item.lineTotalMinor,
+                })),
+              },
+            },
+            include: {
+              customer: { select: { name: true, phone: true, email: true } },
+              items: true,
+            },
+          });
+
+          return {
+            orderReference: order.orderNumber,
+            status: statusValue(order.status),
+            paymentStatus: statusValue(order.paymentStatus),
+            deliveryStatus: statusValue(order.deliveryStatus),
+            currency: order.currency,
+            subtotalMinor: order.subtotalMinor,
+            deliveryFeeMinor: order.deliveryFeeMinor,
+            totalAmountMinor: order.totalAmountMinor,
+            customer: order.customer,
+            deliveryLocation: order.deliveryArea,
+            customerNote: order.customerNote,
+            items: order.items.map((item) => ({
+              variantId: item.productVariantId,
+              sku: item.skuSnapshot,
+              productName: item.productNameSnapshot,
+              variantName: item.variantNameSnapshot,
+              quantity: item.quantity,
+              unitPriceMinor: item.unitPriceMinor,
+              lineTotalMinor: item.lineTotalMinor,
+            })),
+          };
+        }, {
+          maxWait: 10_000,
+          timeout: 15_000,
+        });
+      } catch (error) {
+        if (attempt < ORDER_REFERENCE_ATTEMPTS && isRetryableTransactionError(error)) {
+          continue;
+        }
+        throw error;
+      }
+    }
+
+    throw new Error("Unable to allocate an order reference.");
+  },
+};

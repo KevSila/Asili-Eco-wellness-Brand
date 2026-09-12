@@ -42,7 +42,33 @@ The Express application is assembled in `src/server/app.ts`. API routes live und
 
 - `GET /api/health` — lightweight process health check
 - `GET /api/health/db` — database readiness check; returns `503` without database details when PostgreSQL is unavailable
+- `GET /api/products` — active products that have at least one active variant
+- `GET /api/products/:slug` — one active public product by slug
+- `POST /api/orders` — validated customer order creation with atomic stock reservation
 - `POST /api/contact` — existing Resend-backed contact flow
+
+Order requests use this shape:
+
+```json
+{
+  "customer": {
+    "name": "Customer name",
+    "phone": "0712 345 678",
+    "email": "optional@example.com"
+  },
+  "deliveryLocation": "Nairobi CBD",
+  "customerNote": "Optional delivery note",
+  "items": [
+    { "variantId": "database-variant-id", "quantity": 2 }
+  ]
+}
+```
+
+Names, SKUs, prices, currencies, totals and stock are always read or calculated by the server. Kenyan mobile numbers are stored as `+254` followed by nine national digits. Order references default to `ASILI-YYMMDD-XXXXXX`; `ORDER_REFERENCE_PREFIX` can provide a future client-specific prefix without changing database concepts.
+
+Order creation loads the current catalogue and executes conditional stock decrements, customer upsert, order creation and snapshot item creation in one PostgreSQL transaction. Conditional `stock_quantity >= quantity` updates prevent competing orders from producing negative inventory.
+
+Database integration tests are guarded to prevent accidental writes. Against an explicitly approved development database, set `RUN_DATABASE_TESTS=true` for the test process. The suite creates only clearly prefixed `[DEV TEST]` records and removes those records after verification.
 
 The production build creates the Vite site and a Node.js server bundle:
 

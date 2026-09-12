@@ -4,6 +4,9 @@ import { createServer as createViteServer } from "vite";
 import { createContactRouter } from "./routes/contact";
 import { createHealthRouter } from "./routes/health";
 import type { DatabaseReadinessCheck } from "./services/database-readiness";
+import { createOrdersRouter } from "./routes/orders";
+import { createProductsRouter } from "./routes/products";
+import type { BusinessService } from "./services/business";
 
 interface CreateAppOptions {
   serveFrontend?: boolean;
@@ -11,6 +14,7 @@ interface CreateAppOptions {
   contactFromEmail?: string;
   contactToEmail?: string;
   databaseReadinessCheck?: DatabaseReadinessCheck;
+  businessService?: BusinessService;
 }
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -31,6 +35,8 @@ export async function createApp(options: CreateAppOptions = {}) {
       toEmail: options.contactToEmail ?? process.env.CONTACT_TO_EMAIL,
     }),
   );
+  app.use("/api/products", createProductsRouter(options.businessService));
+  app.use("/api/orders", createOrdersRouter(options.businessService));
 
   if (!serveFrontend) {
     return app;
