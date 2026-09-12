@@ -2,13 +2,15 @@ import express from "express";
 import path from "node:path";
 import { createServer as createViteServer } from "vite";
 import { createContactRouter } from "./routes/contact";
-import { healthRouter } from "./routes/health";
+import { createHealthRouter } from "./routes/health";
+import type { DatabaseReadinessCheck } from "./services/database-readiness";
 
 interface CreateAppOptions {
   serveFrontend?: boolean;
   resendApiKey?: string;
   contactFromEmail?: string;
   contactToEmail?: string;
+  databaseReadinessCheck?: DatabaseReadinessCheck;
 }
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -17,7 +19,10 @@ export async function createApp(options: CreateAppOptions = {}) {
 
   app.disable("x-powered-by");
   app.use(express.json({ limit: "20kb" }));
-  app.use("/api/health", healthRouter);
+  app.use(
+    "/api/health",
+    createHealthRouter({ databaseReadinessCheck: options.databaseReadinessCheck }),
+  );
   app.use(
     "/api/contact",
     createContactRouter({

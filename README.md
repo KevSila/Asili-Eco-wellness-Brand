@@ -41,6 +41,7 @@ Order creation is not part of Foundation Batch 1. When it is added, customer/ord
 The Express application is assembled in `src/server/app.ts`. API routes live under `src/server/routes`, server-only database code lives under `src/server/db`, and `server.ts` is the process entry point.
 
 - `GET /api/health` — lightweight process health check
+- `GET /api/health/db` — database readiness check; returns `503` without database details when PostgreSQL is unavailable
 - `POST /api/contact` — existing Resend-backed contact flow
 
 The production build creates the Vite site and a Node.js server bundle:

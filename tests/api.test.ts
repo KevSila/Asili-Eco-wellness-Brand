@@ -15,6 +15,45 @@ describe("API smoke tests", () => {
     expect(Number.isNaN(Date.parse(response.body.timestamp))).toBe(false);
   });
 
+  it("reports database readiness when the query succeeds", async () => {
+    const databaseReadinessCheck = vi.fn().mockResolvedValue(undefined);
+    const app = await createApp({
+      serveFrontend: false,
+      resendApiKey: "",
+      databaseReadinessCheck,
+    });
+    const response = await request(app).get("/api/health/db");
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      status: "ok",
+      service: "silatech-business-helper-api",
+      database: "ready",
+    });
+    expect(databaseReadinessCheck).toHaveBeenCalledOnce();
+  });
+
+  it("returns a safe unavailable response when the database query fails", async () => {
+    const databaseReadinessCheck = vi.fn().mockRejectedValue(new Error("private database error"));
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const app = await createApp({
+      serveFrontend: false,
+      resendApiKey: "",
+      databaseReadinessCheck,
+    });
+    const response = await request(app).get("/api/health/db");
+
+    expect(response.status).toBe(503);
+    expect(response.body).toMatchObject({
+      status: "unavailable",
+      service: "silatech-business-helper-api",
+      database: "unavailable",
+    });
+    expect(JSON.stringify(response.body)).not.toContain("private database error");
+    expect(errorLog).toHaveBeenCalledOnce();
+    errorLog.mockRestore();
+  });
+
   it("rejects an invalid contact request", async () => {
     const app = await createApp({ serveFrontend: false, resendApiKey: "" });
     const response = await request(app)
