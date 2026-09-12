@@ -77,7 +77,41 @@ npm run build
 npm start
 ```
 
-The server reads `PORT` from the environment and falls back to `3000` locally. For Railway, set `DATABASE_URL`, `NODE_ENV=production`, `RESEND_API_KEY`, and the optional contact sender/recipient variables. Use `npm run build` as the build command, `npm start` as the start command, and `npm run db:migrate` as a separately reviewed pre-deploy migration step.
+The server reads `PORT` from the environment, binds to `0.0.0.0`, and falls back to `3000` locally. It handles Railway's `SIGTERM` shutdown signal by stopping the HTTP server and disconnecting Prisma.
+
+### Railway service preparation
+
+Create the API as a Railway service from this repository and select the Railpack builder. Enter these exact values in the service settings:
+
+```text
+Build:      npm run build
+Pre-deploy: npx prisma migrate deploy
+Start:      npm start
+Health:     /api/health/db
+```
+
+Set the health-check timeout to `100` seconds, the pre-deploy timeout to `300` seconds, and begin with one API replica because order rate limiting is currently in-memory. Config-as-Code via `railway.json` is intentionally not used because Railway has deprecated it for new services; these settings should be entered manually during this deployment batch.
+
+The build runs `prisma generate` before producing the Vite client and Node server bundles. The Prisma CLI is a production dependency so the separate Railway pre-deploy container can run committed migrations even if development dependencies are pruned. Set `RAILPACK_NODE_VERSION=22` so Railway uses the verified Node.js major; `package.json` accepts supported Node versions from 20 through 24 for local compatibility.
+
+Configure the API service's Railway Variables as follows:
+
+| Variable | Requirement | Secret | Railway value/notes |
+| --- | --- | --- | --- |
+| `DATABASE_URL` | Required | Yes | Reference the Postgres service's private `DATABASE_URL`, for example `${{Postgres.DATABASE_URL}}`. Do not use `DATABASE_PUBLIC_URL` or the local-development TCP proxy URL. |
+| `NODE_ENV` | Required | No | `production` (Railpack also supplies this at runtime). |
+| `RAILPACK_NODE_VERSION` | Required build setting | No | `22`, matching the deployment verification target. |
+| `RAILPACK_NODE_NPM_INSTALL` | Recommended build setting | No | `npm ci` for deterministic installation from `package-lock.json`. |
+| `RAILPACK_PRUNE_DEPS` | Recommended build setting | No | `true`; Vite remains build-only while Prisma remains available for pre-deploy migrations. |
+| `RESEND_API_KEY` | Required for email delivery | Yes | Resend server API key. Without it, `/api/contact` retains its existing accepted-without-delivery fallback. |
+| `CONTACT_FROM_EMAIL` | Recommended for email delivery | No | A Resend-authorized sender identity. |
+| `CONTACT_TO_EMAIL` | Recommended | Treat as private operational configuration | Destination inbox for contact submissions. |
+| `ORDER_REFERENCE_PREFIX` | Optional | No | Defaults to `ASILI`; accepts 2–10 uppercase letters/numbers. |
+| `PORT` | Do not set manually | No | Injected by Railway and consumed by the server. |
+
+Do not set `RUN_DATABASE_TESTS` in Railway and never create a `VITE_DATABASE_URL` or any other browser-exposed database variable. If Railway Postgres connection pooling is enabled later, add and review an unpooled internal migration URL before changing the Prisma datasource; migrations should not be routed through a transaction-mode pooler.
+
+The Railway health check uses `/api/health/db`, so a deployment is not promoted unless both Express and PostgreSQL are ready. Its failure response is a generic `503` and does not expose database credentials or internal errors. `/api/health` remains a lightweight process-only check.
 
 Netlify remains the public static host. No Netlify `/api/*` proxy is configured yet, so the deployed public ordering form cannot reach Railway until an approved API routing or base-URL deployment batch is completed.
 

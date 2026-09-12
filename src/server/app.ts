@@ -1,7 +1,6 @@
 import express from "express";
 import type { RequestHandler } from "express";
 import path from "node:path";
-import { createServer as createViteServer } from "vite";
 import { createContactRouter } from "./routes/contact";
 import { createHealthRouter } from "./routes/health";
 import type { DatabaseReadinessCheck } from "./services/database-readiness";
@@ -51,6 +50,7 @@ export async function createApp(options: CreateAppOptions = {}) {
   }
 
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",
