@@ -8,6 +8,9 @@ import { createOrdersRouter } from "./routes/orders";
 import { createProductsRouter } from "./routes/products";
 import type { BusinessService } from "./services/business";
 import { createOrderRateLimiter } from "./middleware/order-rate-limit";
+import { createAdminAuthFromEnvironment, type AdminAuthService } from "./auth/admin-auth";
+import { createAdminRouter } from "./routes/admin";
+import type { AdminService } from "./services/admin";
 
 interface CreateAppOptions {
   serveFrontend?: boolean;
@@ -17,6 +20,9 @@ interface CreateAppOptions {
   databaseReadinessCheck?: DatabaseReadinessCheck;
   businessService?: BusinessService;
   orderRateLimiter?: RequestHandler;
+  adminAuth?: AdminAuthService;
+  adminService?: AdminService;
+  adminLoginRateLimiter?: RequestHandler;
 }
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -44,6 +50,14 @@ export async function createApp(options: CreateAppOptions = {}) {
     options.orderRateLimiter ?? createOrderRateLimiter(),
     createOrdersRouter(options.businessService),
   );
+  app.use(
+    "/api/admin",
+    createAdminRouter({
+      auth: options.adminAuth ?? createAdminAuthFromEnvironment(),
+      service: options.adminService,
+      loginRateLimiter: options.adminLoginRateLimiter,
+    }),
+  );
 
   if (!serveFrontend) {
     return app;
@@ -62,7 +76,9 @@ export async function createApp(options: CreateAppOptions = {}) {
     app.get("*", (req, res) => {
       const page = req.path === "/honey" || req.path.startsWith("/honey/")
         ? path.join(distPath, "honey", "index.html")
-        : path.join(distPath, "index.html");
+        : req.path === "/admin" || req.path.startsWith("/admin/")
+          ? path.join(distPath, "admin", "index.html")
+          : path.join(distPath, "index.html");
       res.sendFile(page);
     });
   }

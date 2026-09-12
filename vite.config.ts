@@ -16,6 +16,7 @@ export default defineConfig(() => {
         input: {
           home: path.resolve(__dirname, 'index.html'),
           honey: path.resolve(__dirname, 'honey/index.html'),
+          admin: path.resolve(__dirname, 'admin/index.html'),
         },
       },
     },
