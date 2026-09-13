@@ -11,6 +11,7 @@ import { createOrderRateLimiter } from "./middleware/order-rate-limit";
 import { createAdminAuthFromEnvironment, type AdminAuthService } from "./auth/admin-auth";
 import { createAdminRouter } from "./routes/admin";
 import type { AdminService } from "./services/admin";
+import { createOwnerOrderNotifier, type OwnerOrderNotifier } from "./services/order-notification";
 
 interface CreateAppOptions {
   serveFrontend?: boolean;
@@ -23,6 +24,7 @@ interface CreateAppOptions {
   adminAuth?: AdminAuthService;
   adminService?: AdminService;
   adminLoginRateLimiter?: RequestHandler;
+  orderNotifier?: OwnerOrderNotifier;
 }
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -48,7 +50,15 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.use(
     "/api/orders",
     options.orderRateLimiter ?? createOrderRateLimiter(),
-    createOrdersRouter(options.businessService),
+    createOrdersRouter(
+      options.businessService,
+      options.orderNotifier ?? createOwnerOrderNotifier({
+        resendApiKey: options.resendApiKey ?? process.env.RESEND_API_KEY,
+        fromEmail: options.contactFromEmail ?? process.env.CONTACT_FROM_EMAIL,
+        toEmail: process.env.ORDER_NOTIFICATION_TO_EMAIL ?? options.contactToEmail ?? process.env.CONTACT_TO_EMAIL,
+        adminUrl: process.env.ADMIN_PUBLIC_URL,
+      }),
+    ),
   );
   app.use(
     "/api/admin",

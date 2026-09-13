@@ -1,6 +1,9 @@
 import { createHash, randomBytes } from "node:crypto";
 import {
   Prisma,
+  InventoryMovementSource,
+  InventoryMovementType,
+  OrderSource,
   type DeliveryStatus,
   type OrderStatus,
   type PaymentStatus,
@@ -42,6 +45,7 @@ export interface CreateOrderInput {
 
 export interface PublicOrder {
   orderReference: string;
+  createdAt: string;
   status: string;
   paymentStatus: string;
   deliveryStatus: string;
@@ -203,6 +207,7 @@ type PublicOrderRecord = Prisma.OrderGetPayload<{ include: typeof publicOrderInc
 function toPublicOrder(order: PublicOrderRecord): PublicOrder {
   return {
     orderReference: order.orderNumber,
+    createdAt: order.createdAt.toISOString(),
     status: statusValue(order.status),
     paymentStatus: statusValue(order.paymentStatus),
     deliveryStatus: statusValue(order.deliveryStatus),
@@ -210,8 +215,12 @@ function toPublicOrder(order: PublicOrderRecord): PublicOrder {
     subtotalMinor: order.subtotalMinor,
     deliveryFeeMinor: order.deliveryFeeMinor,
     totalAmountMinor: order.totalAmountMinor,
-    customer: order.customer,
-    deliveryLocation: order.deliveryArea,
+    customer: {
+      name: order.customer?.name ?? order.customerNameSnapshot ?? "Customer",
+      phone: order.customer?.phone ?? order.customerPhoneSnapshot ?? "",
+      email: order.customer?.email ?? null,
+    },
+    deliveryLocation: order.deliveryArea ?? "",
     customerNote: order.customerNote,
     items: order.items.map((item) => ({
       sku: item.skuSnapshot,
@@ -325,23 +334,6 @@ export const businessService: BusinessService = {
             throw new InvalidOrderTotalError();
           }
 
-          for (const item of lineItems) {
-            if (item.variant.stockQuantity === null) continue;
-            const stockUpdate = await transaction.productVariant.updateMany({
-              where: {
-                id: item.variantId,
-                active: true,
-                stockQuantity: { gte: item.quantity },
-                product: { active: true },
-              },
-              data: { stockQuantity: { decrement: item.quantity } },
-            });
-
-            if (stockUpdate.count !== 1) {
-              throw new InsufficientStockError();
-            }
-          }
-
           const customer = await transaction.customer.upsert({
             where: { normalizedPhone: input.customer.phone },
             update: {
@@ -362,9 +354,12 @@ export const businessService: BusinessService = {
           const order = await transaction.order.create({
             data: {
               orderNumber: orderReference,
+              source: OrderSource.WEBSITE,
               idempotencyKey: options.idempotencyKey,
               idempotencyFingerprint: fingerprint,
               customerId: customer.id,
+              customerNameSnapshot: input.customer.name,
+              customerPhoneSnapshot: input.customer.phone,
               currency: lineItems[0].variant.currency,
               subtotalMinor,
               totalAmountMinor: subtotalMinor,
@@ -384,6 +379,38 @@ export const businessService: BusinessService = {
             },
             include: publicOrderInclude,
           });
+
+          for (const item of lineItems) {
+            if (item.variant.stockQuantity === null) continue;
+            const stockUpdate = await transaction.productVariant.updateMany({
+              where: {
+                id: item.variantId,
+                active: true,
+                stockQuantity: { gte: item.quantity },
+                product: { active: true },
+              },
+              data: { stockQuantity: { decrement: item.quantity } },
+            });
+
+            if (stockUpdate.count !== 1) throw new InsufficientStockError();
+            const updatedVariant = await transaction.productVariant.findUniqueOrThrow({
+              where: { id: item.variantId },
+              select: { stockQuantity: true },
+            });
+            const stockAfter = updatedVariant.stockQuantity as number;
+            await transaction.inventoryMovement.create({
+              data: {
+                productVariantId: item.variantId,
+                orderId: order.id,
+                type: InventoryMovementType.ONLINE_SALE,
+                quantityDelta: -item.quantity,
+                stockBefore: stockAfter + item.quantity,
+                stockAfter,
+                reason: `Website order ${order.orderNumber}`,
+                source: InventoryMovementSource.WEBSITE_ORDER,
+              },
+            });
+          }
 
           return { order: toPublicOrder(order), replayed: false };
         }, {

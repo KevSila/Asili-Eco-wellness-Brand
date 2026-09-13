@@ -1,9 +1,10 @@
 import "dotenv/config";
 import { randomUUID } from "node:crypto";
-import { PrismaClient } from "@prisma/client";
+import { OrderSource, PaymentStatus, PrismaClient } from "@prisma/client";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app";
+import { adminService, InsufficientInventoryError } from "../src/server/services/admin";
 
 const RUN_DATABASE_TESTS = process.env.RUN_DATABASE_TESTS === "true";
 const databaseDescribe = RUN_DATABASE_TESTS ? describe : describe.skip;
@@ -41,6 +42,7 @@ async function cleanTestTransactions() {
   });
 
   if (testOrders.length > 0) {
+    await prisma.inventoryMovement.deleteMany({ where: { orderId: { in: testOrders.map((order) => order.id) } } });
     await prisma.order.deleteMany({
       where: { id: { in: testOrders.map((order) => order.id) } },
     });
@@ -53,6 +55,8 @@ async function cleanTestTransactions() {
 
 async function cleanAllTestData() {
   await cleanTestTransactions();
+  const testVariants = await prisma.productVariant.findMany({ where: { product: { slug: { startsWith: TEST_SLUG_PREFIX } } }, select: { id: true } });
+  await prisma.inventoryMovement.deleteMany({ where: { productVariantId: { in: testVariants.map((variant) => variant.id) } } });
   await prisma.product.deleteMany({
     where: { slug: { startsWith: TEST_SLUG_PREFIX } },
   });
@@ -250,6 +254,8 @@ databaseDescribe("Business API against PostgreSQL", () => {
     expect(storedOrder?.customer.normalizedPhone).toBe("+254710000001");
     expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } }))
       .toMatchObject({ stockQuantity: 8 });
+    expect(await prisma.inventoryMovement.findFirst({ where: { orderId: storedOrder?.id, productVariantId: firstVariantId } }))
+      .toMatchObject({ type: "ONLINE_SALE", quantityDelta: -2, stockBefore: 10, stockAfter: 8 });
   });
 
   it("replays the same idempotent submission without a duplicate order or stock decrement", async () => {
@@ -411,5 +417,42 @@ databaseDescribe("Business API against PostgreSQL", () => {
         items: { some: { productNameSnapshot: { startsWith: TEST_NAME_PREFIX } } },
       },
     })).toBe(1);
+  });
+
+  it("sets opening stock and records the movement", async () => {
+    await prisma.productVariant.update({ where: { id: firstVariantId }, data: { stockQuantity: null } });
+    const result = await adminService.adjustInventory(firstVariantId, { action: "opening_stock", quantity: 12, reason: "Development opening count" }) as { stockQuantity: number };
+    expect(result.stockQuantity).toBe(12);
+    expect(await prisma.inventoryMovement.findFirst({ where: { productVariantId: firstVariantId, type: "OPENING_STOCK" }, orderBy: { createdAt: "desc" } })).toMatchObject({ stockBefore: null, stockAfter: 12, quantityDelta: 12 });
+  });
+
+  it("receives stock and records a positive movement", async () => {
+    await adminService.adjustInventory(firstVariantId, { action: "stock_received", quantity: 5, reason: "Development receipt" });
+    expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } })).toMatchObject({ stockQuantity: 15 });
+    expect(await prisma.inventoryMovement.findFirst({ where: { productVariantId: firstVariantId, type: "STOCK_RECEIVED" }, orderBy: { createdAt: "desc" } })).toMatchObject({ quantityDelta: 5, stockBefore: 10, stockAfter: 15 });
+  });
+
+  it("records damage and prevents negative stock", async () => {
+    await adminService.adjustInventory(firstVariantId, { action: "damage", quantity: 3, reason: "Development damage" });
+    expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } })).toMatchObject({ stockQuantity: 7 });
+    await expect(adminService.adjustInventory(firstVariantId, { action: "damage", quantity: 8, reason: "Must reject" })).rejects.toBeInstanceOf(InsufficientInventoryError);
+    expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } })).toMatchObject({ stockQuantity: 7 });
+  });
+
+  it("performs a reasoned manual stock correction", async () => {
+    await adminService.adjustInventory(firstVariantId, { action: "correction", stockAfter: 4, reason: "Development recount" });
+    expect(await prisma.productVariant.findUnique({ where: { id: firstVariantId } })).toMatchObject({ stockQuantity: 4 });
+    expect(await prisma.inventoryMovement.findFirst({ where: { productVariantId: firstVariantId, type: "CORRECTION" }, orderBy: { createdAt: "desc" } })).toMatchObject({ quantityDelta: -6, stockBefore: 10, stockAfter: 4, reason: "Development recount" });
+  });
+
+  it("creates a manual sale, customer history and inventory movement", async () => {
+    const order = await adminService.recordManualSale({ source: OrderSource.WALK_IN, customerName: `${TEST_NAME_PREFIX} Manual Customer`, customerPhone: "+254710000020", variantId: firstVariantId, quantity: 2, unitPriceMinor: 70000, paymentStatus: PaymentStatus.PAID, paymentMethod: "Cash", note: "Development manual sale" }) as { orderReference: string; source: string; totalAmountMinor: number };
+    expect(order).toMatchObject({ source: "walk_in", totalAmountMinor: 140000 });
+    const stored = await prisma.order.findUnique({ where: { orderNumber: order.orderReference }, include: { payments: true, inventoryMovements: true } });
+    expect(stored).toMatchObject({ source: "WALK_IN", paymentStatus: "PAID", subtotalMinor: 140000 });
+    expect(stored?.payments[0]).toMatchObject({ method: "Cash", amountMinor: 140000, status: "PAID" });
+    expect(stored?.inventoryMovements[0]).toMatchObject({ type: "MANUAL_SALE", quantityDelta: -2, stockBefore: 10, stockAfter: 8 });
+    const summary = await adminService.listCustomers() as { customers: Array<{ phone: string | null; orderCount: number; totalProductSpendMinor: number; latestOrderSource: string | null }> };
+    expect(summary.customers.find((customer) => customer.phone === "+254710000020")).toMatchObject({ orderCount: 1, totalProductSpendMinor: 140000, latestOrderSource: "walk_in" });
   });
 });
