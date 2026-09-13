@@ -12,6 +12,7 @@ import {
   type CreateOrderInput,
 } from "../services/business";
 import type { OwnerOrderNotifier } from "../services/order-notification";
+import { NotificationType } from "@prisma/client";
 
 const optionalEmail = z.preprocess(
   (value) => typeof value === "string" && value.trim() === "" ? undefined : value,
@@ -86,6 +87,11 @@ export function createOrdersRouter(service: BusinessService = businessService, n
           await notifier.notifyWebsiteOrder(result.order);
         } catch {
           console.error("Owner order notification failed.");
+        }
+        try {
+          await notifier.notifyCustomerLifecycle?.(result.order, NotificationType.CUSTOMER_ORDER_RECEIVED);
+        } catch {
+          console.error("Customer order receipt notification failed.");
         }
       }
       return res.status(result.replayed ? 200 : 201).json(result);

@@ -25,6 +25,12 @@ describe("admin order status transitions", () => {
     })).toBe(true);
   });
 
+  it("supports practical independent new-order transitions", () => {
+    expect(isAdminStatusUpdateAllowed(current, { orderStatus: OrderStatus.PROCESSING })).toBe(true);
+    expect(isAdminStatusUpdateAllowed(current, { paymentStatus: PaymentStatus.PARTIALLY_PAID })).toBe(true);
+    expect(isAdminStatusUpdateAllowed(current, { deliveryStatus: DeliveryStatus.DISPATCHED })).toBe(true);
+  });
+
   it("rejects skipped or backward transitions", () => {
     expect(isAdminStatusUpdateAllowed(current, { orderStatus: OrderStatus.DELIVERED })).toBe(false);
     expect(isAdminStatusUpdateAllowed({ ...current, status: OrderStatus.DELIVERED }, { orderStatus: OrderStatus.NEW })).toBe(false);

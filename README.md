@@ -77,6 +77,8 @@ Orders carry a source of `website`, `manual`, `whatsapp`, `phone` or `walk_in`. 
 
 After a new, non-replayed website order commits, the server sends an owner email through Resend. Notification failure is logged without customer details and never rolls back the order. Set `ORDER_NOTIFICATION_TO_EMAIL` or allow it to fall back to `CONTACT_TO_EMAIL`; set `ADMIN_PUBLIC_URL` to include a direct protected order link.
 
+The dashboard sales summary uses `Africa/Nairobi` calendar boundaries, with weeks beginning Monday. Product sales value is the product subtotal of non-cancelled, non-refunded orders. Paid revenue includes only fully paid orders; pending and partially paid order value is reported separately as awaiting payment. Monthly units and channel totals use the same rules. Delivery fees, costs, profit, margin, VAT and refunded orders are intentionally excluded because they are not reliable revenue measures in the current model.
+
 Netlify must serve the `/admin/` login shell, so the static HTML itself contains no private data. All metrics, customers, orders and mutations are loaded exclusively through authenticated `/api/admin/*` endpoints.
 
 Order requests use this shape:
@@ -102,7 +104,11 @@ Names, SKUs, prices, currencies, totals and stock are always read or calculated 
 
 Order creation loads the current catalogue and executes conditional stock decrements, customer upsert, order creation and snapshot item creation in one PostgreSQL transaction. Conditional `stock_quantity >= quantity` updates prevent competing orders from producing negative inventory. A `NULL` stock quantity means unconfirmed availability: the public catalogue returns `availableStock: null`, the order can be recorded for confirmation, and no inventory value is invented or decremented. A known value of `0` means unavailable.
 
-Database integration tests are guarded to prevent accidental writes. Against an explicitly approved development database, set `RUN_DATABASE_TESTS=true` for the test process. The suite creates only clearly prefixed `[DEV TEST]` records and removes those records after verification.
+Database integration tests are guarded to prevent accidental writes. They require `RUN_DATABASE_TESTS=true` and a separate `TEST_DATABASE_URL`; `DATABASE_URL` is never a fallback and the two URLs may not identify the same host/database. Remote test databases and database names without `test` are rejected unless their dedicated override flags are explicitly set after verifying that the target is disposable. The suite creates only clearly prefixed `[DEV TEST]` records and removes those records after verification. Never set these test flags in Railway production.
+
+Admin payments are an append-only receipt ledger. Each actual receipt records integer minor units, method, optional reference/note and receipt time. Only `paid` ledger rows contribute to amount received; preserved legacy pending/partial rows are shown but are not treated as proof that money was received. The order payment status is derived as pending, partially paid or paid after each new receipt, and overpayments are rejected transactionally.
+
+Customer lifecycle email uses the existing server-only Resend configuration. A receipt is sent after a new non-replayed website order, and one email per order may be sent when it is dispatched, delivered, cancelled or refunded. The additive `notification_logs` table provides durable per-event deduplication and delivery status; an email failure is recorded and does not roll back the underlying order/status transaction. Deploy `20260913150000_customer_notification_log` with the standard pre-deploy migration command before this code receives traffic.
 
 The production build creates the Vite site and a Node.js server bundle:
 

@@ -9,6 +9,7 @@ import {
   Prisma,
 } from "@prisma/client";
 import { prisma } from "../db/client";
+import { buildSalesSummary, getNairobiPeriodStarts } from "./sales-reporting";
 
 const MAX_POSTGRES_INTEGER = 2_147_483_647;
 
@@ -42,15 +43,30 @@ export interface ManualSaleInput {
   unitPriceMinor: number;
   paymentStatus: PaymentStatus;
   paymentMethod: string;
+  amountReceivedMinor?: number;
   note?: string;
   deliveryLocation?: string;
+}
+
+export interface RecordPaymentInput {
+  amountMinor: number;
+  method: string;
+  reference?: string;
+  notes?: string;
+  paidAt?: Date;
+}
+
+export interface StatusUpdateResult {
+  order: unknown;
+  changed: AdminStatusUpdate;
 }
 
 export interface AdminService {
   getDashboard(): Promise<unknown>;
   listOrders(filters?: AdminOrderFilters): Promise<unknown>;
   getOrder(orderNumber: string): Promise<unknown | null>;
-  updateOrderStatuses(orderNumber: string, update: AdminStatusUpdate): Promise<unknown>;
+  updateOrderStatuses(orderNumber: string, update: AdminStatusUpdate): Promise<StatusUpdateResult>;
+  recordPayment(orderNumber: string, input: RecordPaymentInput): Promise<unknown>;
   listInventory(): Promise<unknown>;
   adjustInventory(variantId: string, input: InventoryAdjustmentInput): Promise<unknown>;
   recordManualSale(input: ManualSaleInput): Promise<unknown>;
@@ -62,10 +78,11 @@ export class InvalidStatusTransitionError extends Error {}
 export class InventoryVariantNotFoundError extends Error {}
 export class InvalidInventoryAdjustmentError extends Error {}
 export class InsufficientInventoryError extends Error {}
+export class InvalidPaymentError extends Error {}
 
 const orderTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
-  NEW: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
-  CONFIRMED: [OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+  NEW: [OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.CANCELLED],
+  CONFIRMED: [OrderStatus.PROCESSING, OrderStatus.DISPATCHED, OrderStatus.CANCELLED],
   PROCESSING: [OrderStatus.DISPATCHED, OrderStatus.CANCELLED],
   DISPATCHED: [OrderStatus.DELIVERED],
   DELIVERED: [],
@@ -100,22 +117,41 @@ export function isAdminStatusUpdateAllowed(
 const adminOrderInclude = {
   customer: { select: { name: true, phone: true, normalizedPhone: true, email: true } },
   items: { select: { productNameSnapshot: true, variantNameSnapshot: true, skuSnapshot: true, unitPriceMinor: true, quantity: true, lineTotalMinor: true } },
-  payments: { take: 1, orderBy: { createdAt: "desc" as const }, select: { method: true } },
+  payments: { orderBy: { createdAt: "asc" as const }, select: { id: true, method: true, amountMinor: true, currency: true, reference: true, status: true, paidAt: true, notes: true, createdAt: true } },
 } satisfies Prisma.OrderInclude;
 
 type AdminOrderRecord = Prisma.OrderGetPayload<{ include: typeof adminOrderInclude }>;
 const lower = (value: string) => value.toLowerCase();
 
+export function calculatePaymentBalance(amountDueMinor: number, payments: Array<{ amountMinor: number; status: PaymentStatus }>) {
+  const amountReceivedMinor = payments.filter((payment) => payment.status === PaymentStatus.PAID).reduce((total, payment) => total + payment.amountMinor, 0);
+  return { amountDueMinor, amountReceivedMinor, balanceMinor: Math.max(0, amountDueMinor - amountReceivedMinor) };
+}
+
 function toAdminOrder(order: AdminOrderRecord) {
   const name = order.customer?.name ?? order.customerNameSnapshot ?? "Walk-in customer";
   const phone = order.customer?.normalizedPhone ?? order.customerPhoneSnapshot;
+  const paymentBalance = calculatePaymentBalance(order.subtotalMinor + order.deliveryFeeMinor, order.payments);
+  const latestPayment = order.payments.at(-1);
   return {
     orderReference: order.orderNumber,
     source: lower(order.source),
     customer: { name, phone, normalizedPhone: phone, email: order.customer?.email ?? null },
     deliveryLocation: order.deliveryArea,
     customerNote: order.customerNote,
-    paymentMethod: order.payments[0]?.method ?? null,
+    paymentMethod: latestPayment?.method ?? null,
+    ...paymentBalance,
+    paymentHistory: order.payments.map((payment) => ({
+      method: payment.method,
+      amountMinor: payment.amountMinor,
+      currency: payment.currency,
+      reference: payment.reference,
+      status: lower(payment.status),
+      paidAt: payment.paidAt?.toISOString() ?? null,
+      notes: payment.notes,
+      createdAt: payment.createdAt.toISOString(),
+      countedAsReceived: payment.status === PaymentStatus.PAID,
+    })),
     currency: order.currency,
     subtotalMinor: order.subtotalMinor,
     deliveryFeeMinor: order.deliveryFeeMinor,
@@ -156,7 +192,10 @@ async function updateKnownStock(transaction: Prisma.TransactionClient, variantId
 
 export const adminService: AdminService = {
   async getDashboard() {
-    const [totalOrders, newOrders, confirmedOrders, pendingPayments, pendingDeliveries, recentOrders, recentCustomers, products] = await Promise.all([
+    const reportingNow = new Date();
+    const reportingStarts = getNairobiPeriodStarts(reportingNow);
+    const reportingStart = reportingStarts.week < reportingStarts.month ? reportingStarts.week : reportingStarts.month;
+    const [totalOrders, newOrders, confirmedOrders, pendingPayments, pendingDeliveries, recentOrders, recentCustomers, products, reportingOrders] = await Promise.all([
       prisma.order.count(),
       prisma.order.count({ where: { status: OrderStatus.NEW } }),
       prisma.order.count({ where: { status: OrderStatus.CONFIRMED } }),
@@ -164,13 +203,15 @@ export const adminService: AdminService = {
       prisma.order.count({ where: { deliveryStatus: DeliveryStatus.PENDING } }),
       prisma.order.findMany({ take: 8, orderBy: { createdAt: "desc" }, include: adminOrderInclude }),
       prisma.customer.findMany({ take: 8, orderBy: { createdAt: "desc" }, select: { name: true, normalizedPhone: true, email: true, location: true, createdAt: true, _count: { select: { orders: true } } } }),
-      prisma.product.findMany({ orderBy: { name: "asc" }, select: { name: true, slug: true, active: true, variants: { orderBy: { name: "asc" }, select: { id: true, name: true, sku: true, active: true, unitPriceMinor: true, currency: true, stockQuantity: true } } } }),
+      prisma.product.findMany({ where: { active: true, variants: { some: { active: true } } }, orderBy: { name: "asc" }, select: { name: true, slug: true, active: true, variants: { where: { active: true }, orderBy: { name: "asc" }, select: { id: true, name: true, sku: true, active: true, unitPriceMinor: true, currency: true, stockQuantity: true } } } }),
+      prisma.order.findMany({ where: { createdAt: { gte: reportingStart }, status: { not: OrderStatus.CANCELLED }, paymentStatus: { not: PaymentStatus.REFUNDED } }, select: { createdAt: true, source: true, paymentStatus: true, subtotalMinor: true, items: { select: { productNameSnapshot: true, variantNameSnapshot: true, skuSnapshot: true, quantity: true } } } }),
     ]);
     return {
       metrics: { totalOrders, newOrders, confirmedOrders, pendingPayments, pendingDeliveries },
       recentOrders: recentOrders.map(toAdminOrder),
       recentCustomers: recentCustomers.map((customer) => ({ name: customer.name ?? "Unnamed customer", phone: customer.normalizedPhone, email: customer.email, location: customer.location, orderCount: customer._count.orders, createdAt: customer.createdAt.toISOString() })),
       products,
+      salesSummary: buildSalesSummary(reportingOrders, reportingNow),
     };
   },
 
@@ -188,18 +229,38 @@ export const adminService: AdminService = {
     return prisma.$transaction(async (transaction) => {
       const current = await transaction.order.findUnique({ where: { orderNumber }, include: adminOrderInclude });
       if (!current) throw new AdminOrderNotFoundError();
-      if (!isAdminStatusUpdateAllowed(current, update)) throw new InvalidStatusTransitionError();
-      return toAdminOrder(await transaction.order.update({ where: { orderNumber }, data: update, include: adminOrderInclude }));
+      const changed: AdminStatusUpdate = {
+        orderStatus: update.orderStatus !== undefined && update.orderStatus !== current.status ? update.orderStatus : undefined,
+        paymentStatus: update.paymentStatus !== undefined && update.paymentStatus !== current.paymentStatus ? update.paymentStatus : undefined,
+        deliveryStatus: update.deliveryStatus !== undefined && update.deliveryStatus !== current.deliveryStatus ? update.deliveryStatus : undefined,
+      };
+      if (!isAdminStatusUpdateAllowed(current, changed)) throw new InvalidStatusTransitionError();
+      if (!Object.values(changed).some(Boolean)) return { order: toAdminOrder(current), changed };
+      const order = await transaction.order.update({ where: { orderNumber }, data: changed, include: adminOrderInclude });
+      return { order: toAdminOrder(order), changed };
     });
+  },
+
+  async recordPayment(orderNumber, input) {
+    return prisma.$transaction(async (transaction) => {
+      const order = await transaction.order.findUnique({ where: { orderNumber }, include: adminOrderInclude });
+      if (!order) throw new AdminOrderNotFoundError();
+      const received = order.payments.filter((payment) => payment.status === PaymentStatus.PAID).reduce((total, payment) => total + payment.amountMinor, 0);
+      const amountDue = order.subtotalMinor + order.deliveryFeeMinor;
+      if (input.amountMinor <= 0 || received + input.amountMinor > amountDue) throw new InvalidPaymentError("Payment must be positive and cannot exceed the remaining balance.");
+      await transaction.payment.create({ data: { orderId: order.id, amountMinor: input.amountMinor, currency: order.currency, method: input.method, reference: input.reference, notes: input.notes, status: PaymentStatus.PAID, paidAt: input.paidAt ?? new Date() } });
+      const paymentStatus = received + input.amountMinor === amountDue ? PaymentStatus.PAID : PaymentStatus.PARTIALLY_PAID;
+      return toAdminOrder(await transaction.order.update({ where: { id: order.id }, data: { paymentStatus }, include: adminOrderInclude }));
+    }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10_000, timeout: 15_000 });
   },
 
   async listInventory() {
     const products = await prisma.product.findMany({
-      where: { active: true },
+      where: { active: true, variants: { some: { active: true } } },
       orderBy: { name: "asc" },
       select: { name: true, variants: { where: { active: true }, orderBy: { name: "asc" }, select: {
         id: true, name: true, sku: true, unitPriceMinor: true, currency: true, stockQuantity: true,
-        inventoryMovements: { take: 12, orderBy: { createdAt: "desc" }, select: { id: true, type: true, quantityDelta: true, stockBefore: true, stockAfter: true, reason: true, source: true, createdAt: true, order: { select: { orderNumber: true } } } },
+        inventoryMovements: { take: 25, orderBy: { createdAt: "desc" }, select: { type: true, quantityDelta: true, stockBefore: true, stockAfter: true, reason: true, source: true, createdAt: true, order: { select: { orderNumber: true } } } },
       } } },
     });
     return { products };
@@ -267,13 +328,17 @@ export const adminService: AdminService = {
         customerId = (await transaction.customer.create({ data: { name: input.customerName, location: input.deliveryLocation } })).id;
       }
 
+      const amountReceivedMinor = input.amountReceivedMinor ?? (input.paymentStatus === PaymentStatus.PAID ? lineTotalMinor : 0);
+      if (input.paymentStatus === PaymentStatus.PARTIALLY_PAID && input.amountReceivedMinor === undefined) throw new InvalidPaymentError("Enter the amount actually received for a partial payment.");
+      if (amountReceivedMinor < 0 || amountReceivedMinor > lineTotalMinor) throw new InvalidPaymentError("Amount received cannot exceed the sale total.");
+      const paymentStatus = amountReceivedMinor === 0 ? PaymentStatus.PENDING : amountReceivedMinor === lineTotalMinor ? PaymentStatus.PAID : PaymentStatus.PARTIALLY_PAID;
       const order = await transaction.order.create({
         data: {
           orderNumber: createAdminOrderReference(), source: input.source, customerId, customerNameSnapshot: input.customerName, customerPhoneSnapshot: input.customerPhone,
-          status: OrderStatus.CONFIRMED, paymentStatus: input.paymentStatus, deliveryStatus: input.deliveryLocation ? DeliveryStatus.PENDING : DeliveryStatus.DELIVERED,
+          status: OrderStatus.CONFIRMED, paymentStatus, deliveryStatus: input.deliveryLocation ? DeliveryStatus.PENDING : DeliveryStatus.DELIVERED,
           currency: variant.currency, subtotalMinor: lineTotalMinor, totalAmountMinor: lineTotalMinor, deliveryArea: input.deliveryLocation, customerNote: input.note,
           items: { create: { productVariantId: variant.id, productNameSnapshot: variant.product.name, variantNameSnapshot: variant.name, skuSnapshot: variant.sku, unitPriceMinor: input.unitPriceMinor, quantity: input.quantity, lineTotalMinor } },
-          payments: { create: { method: input.paymentMethod, amountMinor: lineTotalMinor, currency: variant.currency, status: input.paymentStatus, paidAt: input.paymentStatus === PaymentStatus.PAID ? new Date() : undefined } },
+          payments: amountReceivedMinor > 0 ? { create: { method: input.paymentMethod, amountMinor: amountReceivedMinor, currency: variant.currency, status: PaymentStatus.PAID, paidAt: new Date() } } : undefined,
         },
         include: adminOrderInclude,
       });

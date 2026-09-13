@@ -5,6 +5,7 @@ import { createApp } from "../src/server/app";
 import { createAdminAuth, createAdminPasswordHash } from "../src/server/auth/admin-auth";
 import { createAdminLoginRateLimiter } from "../src/server/middleware/admin-login-rate-limit";
 import type { AdminService } from "../src/server/services/admin";
+import type { OwnerOrderNotifier } from "../src/server/services/order-notification";
 
 const ADMIN_EMAIL = "owner@example.com";
 const ADMIN_PASSWORD = "correct horse battery staple";
@@ -39,14 +40,22 @@ function createMockService() {
       recentOrders: [sampleOrder],
       recentCustomers: [],
       products: [],
+      salesSummary: {
+        timeZone: "Africa/Nairobi",
+        periodStarts: { today: "2026-09-12T21:00:00.000Z", week: "2026-09-06T21:00:00.000Z", month: "2026-08-31T21:00:00.000Z" },
+        periods: { today: { productSalesMinor: 60000, paidRevenueMinor: 0, awaitingPaymentMinor: 60000, unitsOrdered: 1 }, week: { productSalesMinor: 60000, paidRevenueMinor: 0, awaitingPaymentMinor: 60000, unitsOrdered: 1 }, month: { productSalesMinor: 60000, paidRevenueMinor: 0, awaitingPaymentMinor: 60000, unitsOrdered: 1 } },
+        unitsByVariant: [],
+        revenueBySource: [],
+      },
     }),
     listOrders: vi.fn().mockResolvedValue({ orders: [sampleOrder] }),
     getOrder: vi.fn().mockResolvedValue(sampleOrder),
-    updateOrderStatuses: vi.fn().mockImplementation(async (_reference, update) => ({ ...sampleOrder, ...{
+    updateOrderStatuses: vi.fn().mockImplementation(async (_reference, update) => ({ order: { ...sampleOrder, ...{
       orderStatus: update.orderStatus?.toLowerCase() ?? sampleOrder.orderStatus,
       paymentStatus: update.paymentStatus?.toLowerCase() ?? sampleOrder.paymentStatus,
       deliveryStatus: update.deliveryStatus?.toLowerCase() ?? sampleOrder.deliveryStatus,
-    } })),
+    } }, changed: update })),
+    recordPayment: vi.fn().mockResolvedValue({ ...sampleOrder, paymentStatus: "partially_paid" }),
     listInventory: vi.fn().mockResolvedValue({ products: [] }),
     adjustInventory: vi.fn().mockResolvedValue({ variantId: "variant-test", stockQuantity: 10 }),
     recordManualSale: vi.fn().mockResolvedValue({ ...sampleOrder, source: "walk_in" }),
@@ -54,7 +63,7 @@ function createMockService() {
   } satisfies AdminService;
 }
 
-async function createTestApp(options: { loginLimit?: number } = {}) {
+async function createTestApp(options: { loginLimit?: number; orderNotifier?: OwnerOrderNotifier } = {}) {
   const service = createMockService();
   const app = await createApp({
     serveFrontend: false,
@@ -62,6 +71,7 @@ async function createTestApp(options: { loginLimit?: number } = {}) {
     adminAuth: createAdminAuth({ email: ADMIN_EMAIL, passwordHash, sessionSecret: SESSION_SECRET, secureCookies: false }),
     adminService: service,
     adminLoginRateLimiter: createAdminLoginRateLimiter({ windowMs: 60_000, limit: options.loginLimit ?? 20 }),
+    orderNotifier: options.orderNotifier,
   });
   return { app, service };
 }
@@ -134,6 +144,7 @@ describe("admin authentication and APIs", () => {
     const response = await agent.get("/api/admin/dashboard");
     expect(response.status).toBe(200);
     expect(response.body.metrics.totalOrders).toBe(1);
+    expect(response.body.salesSummary.timeZone).toBe("Africa/Nairobi");
     expect(service.getDashboard).toHaveBeenCalledOnce();
   });
 
@@ -188,6 +199,42 @@ describe("admin authentication and APIs", () => {
     expect(invalid.body.code).toBe("INVALID_STATUS");
     expect(noCsrf.status).toBe(403);
     expect(service.updateOrderStatuses).not.toHaveBeenCalled();
+  });
+
+  it("records an audited partial payment through a protected endpoint", async () => {
+    const { app, service } = await createTestApp();
+    const agent = request.agent(app);
+    const session = await login(agent);
+    const response = await agent.post(`/api/admin/orders/${sampleOrder.orderReference}/payments`)
+      .set("X-CSRF-Token", session.csrfToken)
+      .send({ amountMinor: 20000, method: "M-Pesa", reference: "TEST-RECEIPT" });
+    expect(response.status).toBe(201);
+    expect(service.recordPayment).toHaveBeenCalledWith(sampleOrder.orderReference, expect.objectContaining({ amountMinor: 20000, method: "M-Pesa", reference: "TEST-RECEIPT" }));
+  });
+
+  it("sends one customer lifecycle notification only when a status actually changes", async () => {
+    const notifier: OwnerOrderNotifier = { notifyWebsiteOrder: vi.fn(), notifyCustomerLifecycle: vi.fn().mockResolvedValue(undefined) };
+    const { app } = await createTestApp({ orderNotifier: notifier });
+    const agent = request.agent(app);
+    const session = await login(agent);
+    const response = await agent.patch(`/api/admin/orders/${sampleOrder.orderReference}/statuses`)
+      .set("X-CSRF-Token", session.csrfToken)
+      .send({ orderStatus: "new", paymentStatus: "pending", deliveryStatus: "dispatched" });
+    expect(response.status).toBe(200);
+    expect(notifier.notifyCustomerLifecycle).toHaveBeenCalledWith(expect.objectContaining({ orderReference: sampleOrder.orderReference }), "CUSTOMER_DISPATCHED");
+  });
+
+  it("does not resend a lifecycle notification for an unchanged status request", async () => {
+    const notifier: OwnerOrderNotifier = { notifyWebsiteOrder: vi.fn(), notifyCustomerLifecycle: vi.fn().mockResolvedValue(undefined) };
+    const { app, service } = await createTestApp({ orderNotifier: notifier });
+    vi.mocked(service.updateOrderStatuses).mockResolvedValue({ order: sampleOrder, changed: {} });
+    const agent = request.agent(app);
+    const session = await login(agent);
+    const response = await agent.patch(`/api/admin/orders/${sampleOrder.orderReference}/statuses`)
+      .set("X-CSRF-Token", session.csrfToken)
+      .send({ orderStatus: "new", paymentStatus: "pending", deliveryStatus: "pending" });
+    expect(response.status).toBe(200);
+    expect(notifier.notifyCustomerLifecycle).not.toHaveBeenCalled();
   });
 
   it("logs out and invalidates the browser cookie", async () => {

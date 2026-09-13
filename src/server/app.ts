@@ -30,6 +30,12 @@ interface CreateAppOptions {
 export async function createApp(options: CreateAppOptions = {}) {
   const app = express();
   const serveFrontend = options.serveFrontend ?? true;
+  const orderNotifier = options.orderNotifier ?? createOwnerOrderNotifier({
+    resendApiKey: options.resendApiKey ?? process.env.RESEND_API_KEY,
+    fromEmail: options.contactFromEmail ?? process.env.CONTACT_FROM_EMAIL,
+    toEmail: process.env.ORDER_NOTIFICATION_TO_EMAIL || options.contactToEmail || process.env.CONTACT_TO_EMAIL,
+    adminUrl: process.env.ADMIN_PUBLIC_URL,
+  });
 
   app.disable("x-powered-by");
   if (process.env.NODE_ENV === "production") app.set("trust proxy", 1);
@@ -52,12 +58,7 @@ export async function createApp(options: CreateAppOptions = {}) {
     options.orderRateLimiter ?? createOrderRateLimiter(),
     createOrdersRouter(
       options.businessService,
-      options.orderNotifier ?? createOwnerOrderNotifier({
-        resendApiKey: options.resendApiKey ?? process.env.RESEND_API_KEY,
-        fromEmail: options.contactFromEmail ?? process.env.CONTACT_FROM_EMAIL,
-        toEmail: process.env.ORDER_NOTIFICATION_TO_EMAIL ?? options.contactToEmail ?? process.env.CONTACT_TO_EMAIL,
-        adminUrl: process.env.ADMIN_PUBLIC_URL,
-      }),
+      orderNotifier,
     ),
   );
   app.use(
@@ -66,6 +67,7 @@ export async function createApp(options: CreateAppOptions = {}) {
       auth: options.adminAuth ?? createAdminAuthFromEnvironment(),
       service: options.adminService,
       loginRateLimiter: options.adminLoginRateLimiter,
+      orderNotifier,
     }),
   );
 
