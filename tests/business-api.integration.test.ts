@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { randomUUID } from "node:crypto";
 import { OrderSource, PaymentStatus, PrismaClient } from "@prisma/client";
 import request from "supertest";
@@ -202,6 +201,17 @@ databaseDescribe("Business API against PostgreSQL", () => {
     expect(slugs).toContain(activeProductSlug);
     expect(slugs).not.toContain(inactiveProductSlug);
     expect(slugs).not.toContain(noActiveVariantsSlug);
+  });
+
+  it("hides inactive products and variants from admin operational catalogue views", async () => {
+    const dashboard = await adminService.getDashboard() as { products: Array<{ slug: string; active: boolean; variants: Array<{ active: boolean }> }> };
+    const inventory = await adminService.listInventory() as { products: Array<{ name: string; variants: Array<{ sku: string }> }> };
+
+    expect(dashboard.products.every((product) => product.active && product.variants.every((variant) => variant.active))).toBe(true);
+    expect(dashboard.products.map((product) => product.slug)).not.toContain(inactiveProductSlug);
+    expect(dashboard.products.map((product) => product.slug)).not.toContain(noActiveVariantsSlug);
+    expect(inventory.products.flatMap((product) => product.variants.map((variant) => variant.sku))).not.toContain(`DEV-INACTIVE-${runId}`);
+    expect(inventory.products.map((product) => product.name)).not.toContain(`${TEST_NAME_PREFIX} Inactive Product ${runId}`);
   });
 
   it("returns only active variants and only public catalogue fields", async () => {
@@ -424,6 +434,19 @@ databaseDescribe("Business API against PostgreSQL", () => {
     const result = await adminService.adjustInventory(firstVariantId, { action: "opening_stock", quantity: 12, reason: "Development opening count" }) as { stockQuantity: number };
     expect(result.stockQuantity).toBe(12);
     expect(await prisma.inventoryMovement.findFirst({ where: { productVariantId: firstVariantId, type: "OPENING_STOCK" }, orderBy: { createdAt: "desc" } })).toMatchObject({ stockBefore: null, stockAfter: 12, quantityDelta: 12 });
+  });
+
+  it("returns newest-first inventory history without movement database IDs", async () => {
+    const older = new Date();
+    const newer = new Date(older.getTime() + 1);
+    await prisma.inventoryMovement.createMany({ data: [
+      { productVariantId: firstVariantId, type: "CORRECTION", quantityDelta: 0, stockBefore: 10, stockAfter: 10, reason: "Development history older", source: "ADMIN", createdAt: older },
+      { productVariantId: firstVariantId, type: "STOCK_RECEIVED", quantityDelta: 1, stockBefore: 10, stockAfter: 11, reason: "Development history newer", source: "ADMIN", createdAt: newer },
+    ] });
+    const inventory = await adminService.listInventory() as { products: Array<{ variants: Array<{ id: string; inventoryMovements: Array<Record<string, unknown>> }> }> };
+    const variant = inventory.products.flatMap((product) => product.variants).find((item) => item.id === firstVariantId);
+    expect(variant?.inventoryMovements.slice(0, 2).map((movement) => movement.reason)).toEqual(["Development history newer", "Development history older"]);
+    expect(variant?.inventoryMovements[0]).not.toHaveProperty("id");
   });
 
   it("receives stock and records a positive movement", async () => {

@@ -24,6 +24,9 @@ interface OrderConfirmation {
   orderReference: string;
   subtotalMinor: number;
   currency: string;
+  deliveryStatus: string;
+  customer: { name: string };
+  items: Array<{ productName: string; variantName: string; quantity: number }>;
 }
 
 type SubmitState = "idle" | "submitting" | "success" | "validation" | "stock" | "rate" | "error";
@@ -40,6 +43,12 @@ function createIdempotencyKey() {
   return crypto.randomUUID();
 }
 
+export function revealOrderConfirmation(element: HTMLElement, browserWindow: Window = window) {
+  browserWindow.history.replaceState(null, "", "#order-confirmation");
+  element.scrollIntoView({ behavior: "smooth", block: "center" });
+  element.focus({ preventScroll: true });
+}
+
 export function HoneyOrderForm() {
   const [product, setProduct] = useState<Product | null>(null);
   const [catalogueError, setCatalogueError] = useState(false);
@@ -47,6 +56,11 @@ export function HoneyOrderForm() {
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [confirmation, setConfirmation] = useState<OrderConfirmation | null>(null);
   const idempotencyKey = useRef<string | null>(null);
+  const confirmationRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (confirmation && confirmationRef.current) revealOrderConfirmation(confirmationRef.current);
+  }, [confirmation]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -147,17 +161,22 @@ export function HoneyOrderForm() {
   if (confirmation) {
     const message = `Hi, I’ve placed Asili order ${confirmation.orderReference}. Please help me confirm delivery details and the delivery fee.`;
     return (
-      <div className="rounded-[2rem] border border-asili-gold/25 bg-white p-7 text-asili-green shadow-xl sm:p-10" role="status">
+      <div id="order-confirmation" ref={confirmationRef} tabIndex={-1} className="rounded-[2rem] border border-asili-gold/25 bg-white p-7 text-asili-green shadow-xl outline-none sm:p-10" role="status" aria-live="polite" aria-label="Order confirmation">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-asili-green text-asili-honey">
           <Check className="h-6 w-6" aria-hidden="true" />
         </div>
         <p className="mt-6 text-xs font-black uppercase tracking-[0.2em] text-asili-earth">Order received</p>
         <h3 className="mt-2 text-3xl font-bold">{confirmation.orderReference}</h3>
+        <p className="mt-3 text-sm">Thank you, <strong>{confirmation.customer.name}</strong>. Your order has been recorded.</p>
+        <ul className="mt-5 space-y-2 rounded-2xl bg-asili-cream p-4 text-sm">
+          {confirmation.items.map((item, index) => <li key={`${item.variantName}-${index}`} className="flex justify-between gap-4"><span>{item.productName} · {item.variantName}</span><strong>× {item.quantity}</strong></li>)}
+        </ul>
         <p className="mt-6 text-sm text-asili-green/60">Product subtotal</p>
         <p className="text-3xl font-black">{money(confirmation.subtotalMinor, confirmation.currency)}</p>
         <p className="mt-6 rounded-2xl bg-asili-honey/15 p-4 text-sm leading-relaxed">
           Delivery is location-based and is not included in this subtotal. We will confirm the delivery fee separately.
         </p>
+        <div className="mt-5 text-sm leading-relaxed"><p><strong>Delivery status:</strong> {confirmation.deliveryStatus.replaceAll("_", " ")}</p><p className="mt-2">Next: continue on WhatsApp so we can confirm your delivery details and fee.</p></div>
         <a
           href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`}
           target="_blank"

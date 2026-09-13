@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/src/lib/utils";
 import { HoneyOrderForm } from "@/src/components/HoneyOrderForm";
+import { orderFormHref, type PublicPage } from "@/src/lib/order-links";
 
 const WHATSAPP_NUMBER = "254717578394";
 const WHATSAPP_BASE = `https://wa.me/${WHATSAPP_NUMBER}`;
@@ -223,9 +224,7 @@ const Header = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => {
             {page === "home" ? "Explore honey" : "About Asili"}
           </a>
           <a
-            href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
-            target="_blank"
-            rel="noopener noreferrer"
+            href={orderFormHref(page)}
             className={cn(
               "rounded-full px-5 py-3 text-[10px] font-black uppercase tracking-widest transition-transform hover:-translate-y-0.5",
               theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
@@ -286,7 +285,7 @@ const Header = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => {
                 {page === "home" ? "Explore honey" : "About Asili"}
               </a>
               <a
-                href={page === "honey" ? "#order" : "/honey/#order"}
+                href={orderFormHref(page)}
                 className={cn(
                   "rounded-full px-4 py-3 text-center text-[10px] font-black uppercase tracking-wider",
                   theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
@@ -800,7 +799,7 @@ const HomePage = () => {
                 ["What is Asili?", "Asili is a Kenyan eco-wellness brand creating high-quality products from Africa’s semi-arid regions. Natural, raw and unheated Makueni honey is the product currently available."],
                 ["Is Asili honey raw and unheated?", "Yes. The honey is not heat-treated. Colour, texture and the speed of natural crystallisation can vary from one batch to another."],
                 ["Where does the honey come from?", "Our current honey story is rooted in Makueni, Kenya. Ask us about the specific availability and source information attached to the jar you want to order."],
-                ["How do I buy it?", "Use any ‘Buy honey’ button to open WhatsApp. We will confirm current jar sizes, batch price, availability and payment details. Delivery can be facilitated at the customer’s expense."],
+                ["How do I buy it?", "Use any ‘Buy honey’ button to open the order form. Choose your jar sizes and quantities, then we will confirm availability and the location-based delivery fee."],
                 ["How does the Glass Hive batch passport work?", "Glass Hive connects an eligible jar with a digital batch record. Open the passport to view captured and reviewed information such as source, handling notes, batch reference and available quality checks."],
               ].map(([question, answer]) => (
                 <details key={question} className="group py-5">
@@ -1184,12 +1183,10 @@ const Footer = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => (
   </footer>
 );
 
-const FloatingWhatsApp = ({ theme }: { theme: Theme }) => (
+const FloatingWhatsApp = ({ theme, page }: { theme: Theme; page: PublicPage }) => (
   <a
-    href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
-    target="_blank"
-    rel="noopener noreferrer"
-    aria-label="Order Asili honey on WhatsApp"
+    href={orderFormHref(page)}
+    aria-label="Go to the Asili honey order form"
     className={cn(
       "fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full px-5 py-3 text-[10px] font-black uppercase tracking-wider shadow-2xl transition-transform hover:-translate-y-1 sm:bottom-7 sm:right-7",
       theme === "luxury" ? "bg-asili-gold text-asili-black" : "bg-asili-green text-white",
@@ -1211,7 +1208,7 @@ export default function App() {
     <div className={cn("min-h-screen", isHoneyPage ? "bg-asili-black" : "bg-asili-cream")}>
       <a href="#main-content" className="skip-link">Skip to content</a>
       {isHoneyPage ? <HoneyPage /> : <HomePage />}
-      <FloatingWhatsApp theme={theme} />
+      <FloatingWhatsApp theme={theme} page={isHoneyPage ? "honey" : "home"} />
     </div>
   );
 }

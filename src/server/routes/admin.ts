@@ -1,6 +1,6 @@
 import { Router } from "express";
 import type { RequestHandler } from "express";
-import { DeliveryStatus, OrderSource, OrderStatus, PaymentStatus } from "@prisma/client";
+import { DeliveryStatus, NotificationType, OrderSource, OrderStatus, PaymentStatus } from "@prisma/client";
 import { z } from "zod";
 import {
   requireAdminCsrf,
@@ -14,11 +14,13 @@ import {
   AdminOrderNotFoundError,
   InsufficientInventoryError,
   InvalidInventoryAdjustmentError,
+  InvalidPaymentError,
   InvalidStatusTransitionError,
   InventoryVariantNotFoundError,
   type AdminService,
 } from "../services/admin";
 import { normalizeKenyanPhoneNumber } from "../lib/kenyan-phone";
+import type { OwnerOrderNotifier } from "../services/order-notification";
 
 const credentialsSchema = z.object({
   email: z.string().trim().email().max(254),
@@ -75,8 +77,17 @@ const manualSaleSchema = z.object({
   unitPriceMinor: z.number().int().min(0).max(2_147_483_647),
   paymentStatus: z.enum(["pending", "partially_paid", "paid", "refunded"]),
   paymentMethod: z.string().trim().min(2).max(80),
+  amountReceivedMinor: z.number().int().min(0).max(2_147_483_647).optional(),
   note: optionalText(1000),
   deliveryLocation: optionalText(240),
+}).strict();
+
+const paymentSchema = z.object({
+  amountMinor: z.number().int().positive().max(2_147_483_647),
+  method: z.string().trim().min(2).max(80),
+  reference: optionalText(120),
+  notes: optionalText(500),
+  paidAt: z.iso.datetime().transform((value) => new Date(value)).optional(),
 }).strict();
 
 const orderStatusValues: Record<string, OrderStatus> = {
@@ -119,6 +130,7 @@ interface AdminRouterOptions {
   auth: AdminAuthService;
   service?: AdminService;
   loginRateLimiter?: RequestHandler;
+  orderNotifier?: OwnerOrderNotifier;
 }
 
 export function createAdminRouter(options: AdminRouterOptions) {
@@ -197,17 +209,43 @@ export function createAdminRouter(options: AdminRouterOptions) {
     const parsed = statusUpdateSchema.safeParse(request.body);
     if (!parsed.success) return response.status(400).json({ error: "Invalid status update.", code: "INVALID_STATUS" });
     try {
-      const order = await service.updateOrderStatuses(request.params.orderNumber, {
+      const result = await service.updateOrderStatuses(request.params.orderNumber, {
         orderStatus: parsed.data.orderStatus ? orderStatusValues[parsed.data.orderStatus] : undefined,
         paymentStatus: parsed.data.paymentStatus ? paymentStatusValues[parsed.data.paymentStatus] : undefined,
         deliveryStatus: parsed.data.deliveryStatus ? deliveryStatusValues[parsed.data.deliveryStatus] : undefined,
       });
-      return response.json({ order });
+      const notificationTypes = [
+        result.changed.deliveryStatus === DeliveryStatus.DISPATCHED ? NotificationType.CUSTOMER_DISPATCHED : null,
+        result.changed.deliveryStatus === DeliveryStatus.DELIVERED ? NotificationType.CUSTOMER_DELIVERED : null,
+        result.changed.orderStatus === OrderStatus.CANCELLED ? NotificationType.CUSTOMER_CANCELLED : null,
+        result.changed.paymentStatus === PaymentStatus.REFUNDED ? NotificationType.CUSTOMER_REFUNDED : null,
+      ].filter((type) => type !== null) as NotificationType[];
+      for (const notificationType of notificationTypes) {
+        try {
+          await options.orderNotifier?.notifyCustomerLifecycle?.(result.order as Parameters<NonNullable<OwnerOrderNotifier["notifyCustomerLifecycle"]>>[0], notificationType);
+        } catch {
+          console.error("Customer order status notification failed.");
+        }
+      }
+      return response.json({ order: result.order });
     } catch (error) {
       if (error instanceof AdminOrderNotFoundError) return response.status(404).json({ error: "Order not found.", code: "ORDER_NOT_FOUND" });
       if (error instanceof InvalidStatusTransitionError) return response.status(409).json({ error: "That status transition is not allowed.", code: "INVALID_STATUS_TRANSITION" });
       console.error("Admin order update failed.", error);
       return response.status(500).json({ error: "Unable to update the order.", code: "ADMIN_UPDATE_FAILED" });
+    }
+  });
+
+  router.post("/orders/:orderNumber/payments", requireAdminCsrf(), async (request, response) => {
+    const parsed = paymentSchema.safeParse(request.body);
+    if (!parsed.success) return response.status(400).json({ error: "Please check the payment details.", code: "INVALID_PAYMENT" });
+    try {
+      return response.status(201).json({ order: await service.recordPayment(request.params.orderNumber, parsed.data) });
+    } catch (error) {
+      if (error instanceof AdminOrderNotFoundError) return response.status(404).json({ error: "Order not found.", code: "ORDER_NOT_FOUND" });
+      if (error instanceof InvalidPaymentError) return response.status(409).json({ error: error.message, code: "INVALID_PAYMENT" });
+      console.error("Admin payment creation failed.", error);
+      return response.status(500).json({ error: "Unable to record the payment.", code: "ADMIN_UPDATE_FAILED" });
     }
   });
 
@@ -248,6 +286,7 @@ export function createAdminRouter(options: AdminRouterOptions) {
       if (error instanceof InventoryVariantNotFoundError) return response.status(404).json({ error: "Product variant not found.", code: "VARIANT_NOT_FOUND" });
       if (error instanceof InsufficientInventoryError) return response.status(409).json({ error: "There is not enough known stock for this sale.", code: "INSUFFICIENT_STOCK" });
       if (error instanceof InvalidInventoryAdjustmentError) return response.status(400).json({ error: error.message, code: "INVALID_MANUAL_SALE" });
+      if (error instanceof InvalidPaymentError) return response.status(400).json({ error: error.message, code: "INVALID_MANUAL_SALE" });
       console.error("Manual sale creation failed.", error);
       return response.status(500).json({ error: "Unable to record the sale.", code: "ADMIN_UPDATE_FAILED" });
     }

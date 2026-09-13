@@ -75,6 +75,24 @@ enum InventoryMovementSource {
   @@map("inventory_movement_source")
 }
 
+enum NotificationType {
+  CUSTOMER_ORDER_RECEIVED @map("customer_order_received")
+  CUSTOMER_DISPATCHED     @map("customer_dispatched")
+  CUSTOMER_DELIVERED      @map("customer_delivered")
+  CUSTOMER_CANCELLED      @map("customer_cancelled")
+  CUSTOMER_REFUNDED       @map("customer_refunded")
+
+  @@map("notification_type")
+}
+
+enum NotificationStatus {
+  PENDING @map("pending")
+  SENT    @map("sent")
+  FAILED  @map("failed")
+
+  @@map("notification_status")
+}
+
 model Customer {
   id              String     @id @default(cuid())
   name            String?
@@ -151,6 +169,7 @@ model Order {
   payments               Payment[]
   followUps              FollowUp[]
   inventoryMovements     InventoryMovement[]
+  notificationLogs       NotificationLog[]
 
   @@index([customerId])
   @@index([status, createdAt])
@@ -158,6 +177,22 @@ model Order {
   @@index([deliveryStatus])
   @@index([source, createdAt])
   @@map("orders")
+}
+
+model NotificationLog {
+  id        String             @id @default(cuid())
+  orderId   String             @map("order_id")
+  type      NotificationType
+  status    NotificationStatus @default(PENDING)
+  recipient String
+  sentAt    DateTime?          @map("sent_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+  order     Order              @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+  @@unique([orderId, type])
+  @@index([status, createdAt])
+  @@map("notification_logs")
 }
 
 model InventoryMovement {

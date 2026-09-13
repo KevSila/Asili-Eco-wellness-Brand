@@ -85,11 +85,24 @@ describe("public order hardening", () => {
     };
     const service = stubService();
     vi.mocked(service.createOrder).mockResolvedValue({ order, replayed: false });
-    const notifier: OwnerOrderNotifier = { notifyWebsiteOrder: vi.fn().mockResolvedValue(undefined) };
+    const notifier: OwnerOrderNotifier = { notifyWebsiteOrder: vi.fn().mockResolvedValue(undefined), notifyCustomerLifecycle: vi.fn().mockResolvedValue(undefined) };
     const app = await createApp({ serveFrontend: false, resendApiKey: "", businessService: service, orderNotifier: notifier, orderRateLimiter: (_request, _response, next) => next() });
     const response = await request(app).post("/api/orders").set("Idempotency-Key", randomUUID()).send({ customer: { name: "Notify Test", phone: "0712345678" }, deliveryLocation: "Nairobi", items: [{ variantId: "variant-test", quantity: 1 }] });
     expect(response.status).toBe(201);
     expect(notifier.notifyWebsiteOrder).toHaveBeenCalledWith(order);
+    expect(notifier.notifyCustomerLifecycle).toHaveBeenCalledWith(order, "CUSTOMER_ORDER_RECEIVED");
+  });
+
+  it("does not notify the owner again for an idempotently replayed order", async () => {
+    const service = stubService();
+    const order = { orderReference: "ASILI-260913-REPLAY", createdAt: "2026-09-13T00:00:00.000Z", status: "new", paymentStatus: "pending", deliveryStatus: "pending", currency: "KES", subtotalMinor: 60000, deliveryFeeMinor: 0, totalAmountMinor: 60000, customer: { name: "Replay Test", phone: "+254712345678", email: null }, deliveryLocation: "Nairobi", customerNote: null, items: [] };
+    vi.mocked(service.createOrder).mockResolvedValue({ order, replayed: true });
+    const notifier: OwnerOrderNotifier = { notifyWebsiteOrder: vi.fn().mockResolvedValue(undefined), notifyCustomerLifecycle: vi.fn().mockResolvedValue(undefined) };
+    const app = await createApp({ serveFrontend: false, resendApiKey: "", businessService: service, orderNotifier: notifier, orderRateLimiter: (_request, _response, next) => next() });
+    const response = await request(app).post("/api/orders").set("Idempotency-Key", randomUUID()).send({ customer: { name: "Replay Test", phone: "0712345678" }, deliveryLocation: "Nairobi", items: [{ variantId: "variant-test", quantity: 1 }] });
+    expect(response.status).toBe(200);
+    expect(notifier.notifyWebsiteOrder).not.toHaveBeenCalled();
+    expect(notifier.notifyCustomerLifecycle).not.toHaveBeenCalled();
   });
 
   it("does not roll back or fail an order when notification fails", async () => {
@@ -103,6 +116,20 @@ describe("public order hardening", () => {
     expect(response.status).toBe(201);
     expect(response.body.order.orderReference).toBe(order.orderReference);
     expect(errorLog).toHaveBeenCalledWith("Owner order notification failed.");
+    errorLog.mockRestore();
+  });
+
+  it("does not roll back an order when the optional customer receipt fails", async () => {
+    const service = stubService();
+    const order = { orderReference: "ASILI-260913-CUSTOMER", createdAt: "2026-09-13T00:00:00.000Z", status: "new", paymentStatus: "pending", deliveryStatus: "pending", currency: "KES", subtotalMinor: 60000, deliveryFeeMinor: 0, totalAmountMinor: 60000, customer: { name: "Email Test", phone: "+254712345678", email: "customer@example.com" }, deliveryLocation: "Nairobi", customerNote: null, items: [] };
+    vi.mocked(service.createOrder).mockResolvedValue({ order, replayed: false });
+    const notifier: OwnerOrderNotifier = { notifyWebsiteOrder: vi.fn().mockResolvedValue(undefined), notifyCustomerLifecycle: vi.fn().mockRejectedValue(new Error("private resend failure")) };
+    const errorLog = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const app = await createApp({ serveFrontend: false, resendApiKey: "", businessService: service, orderNotifier: notifier, orderRateLimiter: (_request, _response, next) => next() });
+    const response = await request(app).post("/api/orders").set("Idempotency-Key", randomUUID()).send({ customer: { name: "Email Test", phone: "0712345678", email: "customer@example.com" }, deliveryLocation: "Nairobi", items: [{ variantId: "variant-test", quantity: 1 }] });
+    expect(response.status).toBe(201);
+    expect(response.body.order.orderReference).toBe(order.orderReference);
+    expect(errorLog).toHaveBeenCalledWith("Customer order receipt notification failed.");
     errorLog.mockRestore();
   });
 });
