@@ -80,38 +80,71 @@ export class InvalidInventoryAdjustmentError extends Error {}
 export class InsufficientInventoryError extends Error {}
 export class InvalidPaymentError extends Error {}
 
-const orderTransitions: Record<OrderStatus, readonly OrderStatus[]> = {
-  NEW: [OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.CANCELLED],
-  CONFIRMED: [OrderStatus.PROCESSING, OrderStatus.DISPATCHED, OrderStatus.CANCELLED],
-  PROCESSING: [OrderStatus.DISPATCHED, OrderStatus.CANCELLED],
-  DISPATCHED: [OrderStatus.DELIVERED],
-  DELIVERED: [],
-  CANCELLED: [],
-};
+const orderProgression = [OrderStatus.NEW, OrderStatus.CONFIRMED, OrderStatus.PROCESSING, OrderStatus.DISPATCHED, OrderStatus.DELIVERED] as const;
+const cancellableOrderStatuses = new Set<OrderStatus>([OrderStatus.NEW, OrderStatus.CONFIRMED, OrderStatus.PROCESSING]);
 const paymentTransitions: Record<PaymentStatus, readonly PaymentStatus[]> = {
   PENDING: [PaymentStatus.PARTIALLY_PAID, PaymentStatus.PAID],
   PARTIALLY_PAID: [PaymentStatus.PAID, PaymentStatus.REFUNDED],
   PAID: [PaymentStatus.REFUNDED],
   REFUNDED: [],
 };
-const deliveryTransitions: Record<DeliveryStatus, readonly DeliveryStatus[]> = {
-  PENDING: [DeliveryStatus.SCHEDULED, DeliveryStatus.DISPATCHED],
-  SCHEDULED: [DeliveryStatus.DISPATCHED],
-  DISPATCHED: [DeliveryStatus.DELIVERED],
-  DELIVERED: [],
-};
+const deliveryProgression = [DeliveryStatus.PENDING, DeliveryStatus.SCHEDULED, DeliveryStatus.DISPATCHED, DeliveryStatus.DELIVERED] as const;
 
 function canTransition<T extends string>(current: T, next: T | undefined, allowed: Record<T, readonly T[]>) {
   return next === undefined || next === current || allowed[current].includes(next);
+}
+
+function canMoveForward<T extends string>(current: T, next: T | undefined, progression: readonly T[]) {
+  return next === undefined || next === current || progression.indexOf(next) > progression.indexOf(current);
+}
+
+function canTransitionOrder(current: OrderStatus, next: OrderStatus | undefined) {
+  if (next === undefined || next === current) return true;
+  if (next === OrderStatus.CANCELLED) return cancellableOrderStatuses.has(current);
+  if (current === OrderStatus.CANCELLED) return false;
+  return canMoveForward(current, next, orderProgression);
+}
+
+function laterOrderStatus(left: OrderStatus, right: OrderStatus): OrderStatus {
+  return orderProgression.indexOf(left as typeof orderProgression[number]) >= orderProgression.indexOf(right as typeof orderProgression[number]) ? left : right;
+}
+
+function laterDeliveryStatus(left: DeliveryStatus, right: DeliveryStatus): DeliveryStatus {
+  return deliveryProgression.indexOf(left) >= deliveryProgression.indexOf(right) ? left : right;
+}
+
+export function synchronizeOperationalStatuses(
+  current: { status: OrderStatus; deliveryStatus: DeliveryStatus },
+  update: AdminStatusUpdate,
+): AdminStatusUpdate {
+  let orderStatus = update.orderStatus;
+  let deliveryStatus = update.deliveryStatus;
+  const desiredOrder = orderStatus ?? current.status;
+  const desiredDelivery = deliveryStatus ?? current.deliveryStatus;
+
+  if (desiredOrder === OrderStatus.DISPATCHED || desiredOrder === OrderStatus.DELIVERED) {
+    const requiredDelivery = desiredOrder === OrderStatus.DELIVERED ? DeliveryStatus.DELIVERED : DeliveryStatus.DISPATCHED;
+    const synchronizedDelivery = laterDeliveryStatus(desiredDelivery, requiredDelivery);
+    if (synchronizedDelivery !== current.deliveryStatus) deliveryStatus = synchronizedDelivery;
+  }
+  if (desiredDelivery === DeliveryStatus.DISPATCHED || desiredDelivery === DeliveryStatus.DELIVERED) {
+    const requiredOrder = desiredDelivery === DeliveryStatus.DELIVERED ? OrderStatus.DELIVERED : OrderStatus.DISPATCHED;
+    const synchronizedOrder = desiredOrder === OrderStatus.CANCELLED ? desiredOrder : laterOrderStatus(desiredOrder, requiredOrder);
+    if (synchronizedOrder !== current.status) orderStatus = synchronizedOrder;
+  }
+
+  return { ...update, orderStatus, deliveryStatus };
 }
 
 export function isAdminStatusUpdateAllowed(
   current: { status: OrderStatus; paymentStatus: PaymentStatus; deliveryStatus: DeliveryStatus },
   update: AdminStatusUpdate,
 ) {
-  return canTransition(current.status, update.orderStatus, orderTransitions)
+  if ((current.status === OrderStatus.CANCELLED || update.orderStatus === OrderStatus.CANCELLED)
+    && update.deliveryStatus !== undefined && update.deliveryStatus !== current.deliveryStatus) return false;
+  return canTransitionOrder(current.status, update.orderStatus)
     && canTransition(current.paymentStatus, update.paymentStatus, paymentTransitions)
-    && canTransition(current.deliveryStatus, update.deliveryStatus, deliveryTransitions);
+    && canMoveForward(current.deliveryStatus, update.deliveryStatus, deliveryProgression);
 }
 
 const adminOrderInclude = {
@@ -126,6 +159,12 @@ const lower = (value: string) => value.toLowerCase();
 export function calculatePaymentBalance(amountDueMinor: number, payments: Array<{ amountMinor: number; status: PaymentStatus }>) {
   const amountReceivedMinor = payments.filter((payment) => payment.status === PaymentStatus.PAID).reduce((total, payment) => total + payment.amountMinor, 0);
   return { amountDueMinor, amountReceivedMinor, balanceMinor: Math.max(0, amountDueMinor - amountReceivedMinor) };
+}
+
+export function derivePaymentStatus(amountDueMinor: number, payments: Array<{ amountMinor: number; status: PaymentStatus }>) {
+  const { amountReceivedMinor } = calculatePaymentBalance(amountDueMinor, payments);
+  if (amountReceivedMinor === 0) return PaymentStatus.PENDING;
+  return amountReceivedMinor < amountDueMinor ? PaymentStatus.PARTIALLY_PAID : PaymentStatus.PAID;
 }
 
 function toAdminOrder(order: AdminOrderRecord) {
@@ -229,12 +268,17 @@ export const adminService: AdminService = {
     return prisma.$transaction(async (transaction) => {
       const current = await transaction.order.findUnique({ where: { orderNumber }, include: adminOrderInclude });
       if (!current) throw new AdminOrderNotFoundError();
-      const changed: AdminStatusUpdate = {
+      const requestedChanges: AdminStatusUpdate = {
         orderStatus: update.orderStatus !== undefined && update.orderStatus !== current.status ? update.orderStatus : undefined,
         paymentStatus: update.paymentStatus !== undefined && update.paymentStatus !== current.paymentStatus ? update.paymentStatus : undefined,
         deliveryStatus: update.deliveryStatus !== undefined && update.deliveryStatus !== current.deliveryStatus ? update.deliveryStatus : undefined,
       };
+      const changed = synchronizeOperationalStatuses(current, requestedChanges);
       if (!isAdminStatusUpdateAllowed(current, changed)) throw new InvalidStatusTransitionError();
+      if (changed.paymentStatus && changed.paymentStatus !== PaymentStatus.REFUNDED) {
+        const ledgerStatus = derivePaymentStatus(current.subtotalMinor + current.deliveryFeeMinor, current.payments);
+        if (changed.paymentStatus !== ledgerStatus) throw new InvalidStatusTransitionError();
+      }
       if (!Object.values(changed).some(Boolean)) return { order: toAdminOrder(current), changed };
       const order = await transaction.order.update({ where: { orderNumber }, data: changed, include: adminOrderInclude });
       return { order: toAdminOrder(order), changed };
@@ -249,7 +293,7 @@ export const adminService: AdminService = {
       const amountDue = order.subtotalMinor + order.deliveryFeeMinor;
       if (input.amountMinor <= 0 || received + input.amountMinor > amountDue) throw new InvalidPaymentError("Payment must be positive and cannot exceed the remaining balance.");
       await transaction.payment.create({ data: { orderId: order.id, amountMinor: input.amountMinor, currency: order.currency, method: input.method, reference: input.reference, notes: input.notes, status: PaymentStatus.PAID, paidAt: input.paidAt ?? new Date() } });
-      const paymentStatus = received + input.amountMinor === amountDue ? PaymentStatus.PAID : PaymentStatus.PARTIALLY_PAID;
+      const paymentStatus = derivePaymentStatus(amountDue, [...order.payments, { amountMinor: input.amountMinor, status: PaymentStatus.PAID }]);
       return toAdminOrder(await transaction.order.update({ where: { id: order.id }, data: { paymentStatus }, include: adminOrderInclude }));
     }, { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, maxWait: 10_000, timeout: 15_000 });
   },

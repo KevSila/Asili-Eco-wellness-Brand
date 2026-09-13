@@ -10,6 +10,7 @@ import {
   OrderDetail,
   Overview,
   RecordSale,
+  progressStatusKinds,
   resolveAdminScreen,
 } from "../src/components/AdminApp";
 
@@ -67,5 +68,9 @@ describe("admin frontend startup states", () => {
     expect(markup).toContain("Ksh 200");
     expect(markup).toContain("Ksh 400");
     expect(markup).toContain("TEST-REF");
+    expect(markup).toContain("Updated from recorded payment receipts");
+    expect(progressStatusKinds).toEqual(["orderStatus", "deliveryStatus"]);
+    expect(progressStatusKinds).not.toContain("paymentStatus");
+    expect(markup.match(/<select/g)).toHaveLength(2);
   });
 });
