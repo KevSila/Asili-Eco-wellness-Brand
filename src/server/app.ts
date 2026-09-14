@@ -25,6 +25,7 @@ interface CreateAppOptions {
   adminService?: AdminService;
   adminLoginRateLimiter?: RequestHandler;
   orderNotifier?: OwnerOrderNotifier;
+  railwayEnvironmentName?: string;
 }
 
 export async function createApp(options: CreateAppOptions = {}) {
@@ -42,7 +43,10 @@ export async function createApp(options: CreateAppOptions = {}) {
   app.use(express.json({ limit: "20kb" }));
   app.use(
     "/api/health",
-    createHealthRouter({ databaseReadinessCheck: options.databaseReadinessCheck }),
+    createHealthRouter({
+      databaseReadinessCheck: options.databaseReadinessCheck,
+      railwayEnvironmentName: options.railwayEnvironmentName,
+    }),
   );
   app.use(
     "/api/contact",

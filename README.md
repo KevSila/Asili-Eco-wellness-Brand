@@ -157,9 +157,9 @@ Configure the API service's Railway Variables as follows:
 
 Do not set `RUN_DATABASE_TESTS` in Railway and never create a `VITE_DATABASE_URL` or any other browser-exposed database variable. If Railway Postgres connection pooling is enabled later, add and review an unpooled internal migration URL before changing the Prisma datasource; migrations should not be routed through a transaction-mode pooler.
 
-The Railway health check uses `/api/health/db`, so a deployment is not promoted unless both Express and PostgreSQL are ready. Its failure response is a generic `503` and does not expose database credentials or internal errors. `/api/health` remains a lightweight process-only check.
+The Railway health check uses `/api/health/db`, so a deployment is not promoted unless both Express and PostgreSQL are ready. Its failure response is a generic `503` and does not expose database credentials or internal errors. `/api/health` remains a lightweight process-only check. Both endpoints expose only the safe Railway environment name supplied by the built-in `RAILWAY_ENVIRONMENT_NAME` variable (or `local` outside Railway); they do not expose environment IDs or connection details.
 
-Netlify remains the public static host. The root `netlify.toml` proxies same-origin `/api/*` requests to the Railway API while preserving the public site's relative API URLs. The proxy rule must remain before any future SPA catch-all redirect.
+Netlify remains the public static host. Configure the build-only `API_PROXY_TARGET` variable by Netlify deploy context: use the production Railway API origin for Production and the staging Railway API origin for Deploy Previews and the staging branch. After Vite finishes, `scripts/generate-netlify-redirects.mjs` writes the context-specific same-origin `/api/*` proxy into `dist/_redirects`. Netlify builds fail when the variable is missing; ordinary local builds skip proxy generation. The variable is never exposed through Vite, and `netlify.toml` contains no hardcoded Railway origin. Keep the generated API rule before any future SPA catch-all redirect.
 
 ## Production checks
 

@@ -9,7 +9,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "npm run prisma:generate && npm run build:client && npm run build:server",
-    "build:client": "vite build",
+    "build:client": "vite build && node scripts/generate-netlify-redirects.mjs",
     "build:server": "tsup server.ts --format esm --platform node --target node20 --out-dir dist/server --clean false --sourcemap --external vite",
     "start": "node dist/server/server.js",
     "preview": "vite preview",
