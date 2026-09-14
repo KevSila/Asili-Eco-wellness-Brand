@@ -23,7 +23,7 @@ let inactiveProductVariantId: string;
 
 async function cleanTestTransactions() {
   const testCustomers = await prisma.customer.findMany({
-    where: { name: { startsWith: TEST_NAME_PREFIX } },
+    where: { OR: [{ name: { startsWith: TEST_NAME_PREFIX } }, { email: "api-test@example.com" }] },
     select: { id: true },
   });
   const testOrders = await prisma.order.findMany({
@@ -64,10 +64,11 @@ async function cleanAllTestData() {
 function orderRequest(
   phone: string,
   items: Array<{ variantId: string; quantity: number }>,
+  name = `${TEST_NAME_PREFIX} Customer ${phone}`,
 ) {
   return {
     customer: {
-      name: `${TEST_NAME_PREFIX} Customer ${phone}`,
+      name,
       phone,
       email: "api-test@example.com",
     },
@@ -404,6 +405,19 @@ databaseDescribe("Business API against PostgreSQL", () => {
     expect(await prisma.customer.count({
       where: { normalizedPhone: "+254710000007" },
     })).toBe(1);
+  });
+
+  it("preserves historical order names while keeping one canonical phone customer", async () => {
+    const first = await postOrder().send(orderRequest("0710000014", [{ variantId: firstVariantId, quantity: 1 }], "DEV PREVIEW TEST"));
+    const second = await postOrder().send(orderRequest("+254710000014", [{ variantId: firstVariantId, quantity: 1 }], "Sila"));
+    expect(first.status).toBe(201);
+    expect(second.status).toBe(201);
+    expect(first.body.order.customer.name).toBe("DEV PREVIEW TEST");
+    expect(second.body.order.customer.name).toBe("Sila");
+    expect((await adminService.getOrder(first.body.order.orderReference) as { customer: { name: string } }).customer.name).toBe("DEV PREVIEW TEST");
+    expect((await adminService.getOrder(second.body.order.orderReference) as { customer: { name: string } }).customer.name).toBe("Sila");
+    expect(await prisma.customer.count({ where: { normalizedPhone: "+254710000014" } })).toBe(1);
+    expect(await prisma.customer.findUnique({ where: { normalizedPhone: "+254710000014" } })).toMatchObject({ name: "Sila" });
   });
 
   it("allows only one of two concurrent orders for the final stock unit", async () => {

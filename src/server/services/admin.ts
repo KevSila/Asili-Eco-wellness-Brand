@@ -10,6 +10,7 @@ import {
 } from "@prisma/client";
 import { prisma } from "../db/client";
 import { buildSalesSummary, getNairobiPeriodStarts } from "./sales-reporting";
+import { resolveHistoricalOrderCustomer } from "../lib/order-customer-snapshot";
 
 const MAX_POSTGRES_INTEGER = 2_147_483_647;
 
@@ -168,14 +169,18 @@ export function derivePaymentStatus(amountDueMinor: number, payments: Array<{ am
 }
 
 function toAdminOrder(order: AdminOrderRecord) {
-  const name = order.customer?.name ?? order.customerNameSnapshot ?? "Walk-in customer";
-  const phone = order.customer?.normalizedPhone ?? order.customerPhoneSnapshot;
+  const historicalCustomer = resolveHistoricalOrderCustomer({
+    customerNameSnapshot: order.customerNameSnapshot,
+    customerPhoneSnapshot: order.customerPhoneSnapshot,
+    currentName: order.customer?.name,
+    currentPhone: order.customer?.normalizedPhone,
+  }, "Walk-in customer");
   const paymentBalance = calculatePaymentBalance(order.subtotalMinor + order.deliveryFeeMinor, order.payments);
   const latestPayment = order.payments.at(-1);
   return {
     orderReference: order.orderNumber,
     source: lower(order.source),
-    customer: { name, phone, normalizedPhone: phone, email: order.customer?.email ?? null },
+    customer: { name: historicalCustomer.name, phone: historicalCustomer.phone, normalizedPhone: historicalCustomer.phone, email: order.customer?.email ?? null },
     deliveryLocation: order.deliveryArea,
     customerNote: order.customerNote,
     paymentMethod: latestPayment?.method ?? null,

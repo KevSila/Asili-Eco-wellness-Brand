@@ -29,6 +29,7 @@ import { cn } from "@/src/lib/utils";
 import { HoneyOrderForm } from "@/src/components/HoneyOrderForm";
 import { orderFormHref, type PublicPage } from "@/src/lib/order-links";
 import { publicHoneyFunnel } from "@/src/lib/public-funnel";
+import { installRenderedHashScrolling } from "@/src/lib/hash-scroll";
 
 const WHATSAPP_NUMBER = "254717578394";
 const WHATSAPP_BASE = `https://wa.me/${WHATSAPP_NUMBER}`;
@@ -126,7 +127,7 @@ const Section = ({
   id?: string;
   motif?: FlowMotifConfig;
 }) => (
-  <section id={id} className={cn("relative isolate scroll-mt-24 overflow-hidden px-6 py-20 md:px-12 lg:px-24 lg:py-28", className)}>
+  <section id={id} tabIndex={id === "order" ? -1 : undefined} className={cn("relative isolate scroll-mt-24 overflow-hidden px-6 py-20 md:px-12 lg:px-24 lg:py-28", className)}>
     {motif && <FlowMotif {...motif} />}
     <div className="relative z-10 mx-auto max-w-7xl">{children}</div>
   </section>
@@ -1205,6 +1206,8 @@ export default function App() {
   useEffect(() => {
     document.documentElement.style.colorScheme = isHoneyPage ? "dark" : "light";
   }, [isHoneyPage]);
+
+  useEffect(() => installRenderedHashScrolling(), []);
 
   return (
     <div className={cn("min-h-screen", isHoneyPage ? "bg-asili-black" : "bg-asili-cream")}>
