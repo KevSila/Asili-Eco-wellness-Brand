@@ -35,6 +35,16 @@ npm run db:seed
 
 `db:migrate` applies committed migrations. `db:seed` idempotently preserves the inactive zero-value sample and publishes the confirmed Asili honey catalogue: 500g at KES 600 and 1kg at KES 1,200. Their stock is `NULL`, meaning availability has not been confirmed. Re-running the seed updates catalogue wording and prices but deliberately does not overwrite an existing stock value.
 
+### Database seed procedures
+
+Seeding is always human-triggered; it is not part of application startup, migration, or Railway pre-deploy. Use the procedure matching the target:
+
+- Local development: set the local server-only `DATABASE_URL`, verify the target, then run `npm run db:seed`. Prisma uses the development-only `tsx` runner configured in `prisma.config.ts`.
+- Railway staging: verify `/api/health` reports `environment: "staging"`, then run `npm run db:seed:prod` in the deployed service. A normal `npm run build` produces `dist/server/prisma/seed.js`, so this command uses Node and the already-installed runtime Prisma dependencies without downloading `tsx`.
+- Exceptional production use: review the seed changes and database target first, then run `ALLOW_PRODUCTION_DATABASE_SEED=true npm run db:seed:prod` for that one deliberate invocation. Do not save `ALLOW_PRODUCTION_DATABASE_SEED` as a persistent Railway variable. Without the exact override, a `production`/`prod` Railway environment—or a production Node runtime with no trustworthy Railway environment name—is refused before any database query.
+
+The guard displays only a validated environment name. It never logs `DATABASE_URL` or any connection credentials.
+
 ## API and production server
 
 The Express application is assembled in `src/server/app.ts`. API routes live under `src/server/routes`, server-only database code lives under `src/server/db`, and `server.ts` is the process entry point.
@@ -132,7 +142,7 @@ Health:     /api/health/db
 
 Set the health-check timeout to `100` seconds, the pre-deploy timeout to `300` seconds, and begin with one API replica because order rate limiting is currently in-memory. Config-as-Code via `railway.json` is intentionally not used because Railway has deprecated it for new services; these settings should be entered manually during this deployment batch.
 
-The build runs `prisma generate` before producing the Vite client and Node server bundles. The Prisma CLI is a production dependency so the separate Railway pre-deploy container can run committed migrations even if development dependencies are pruned. Set `RAILPACK_NODE_VERSION=22` so Railway uses the verified Node.js major; `package.json` accepts supported Node versions from 20 through 24 for local compatibility.
+The build runs `prisma generate` before producing the Vite client, Node server, and Node-runnable seed bundles. The compiled seed is available at `dist/server/prisma/seed.js`. The Prisma CLI is a production dependency so the separate Railway pre-deploy container can run committed migrations even if development dependencies are pruned. Set `RAILPACK_NODE_VERSION=22` so Railway uses the verified Node.js major; `package.json` accepts supported Node versions from 20 through 24 for local compatibility.
 
 Configure the API service's Railway Variables as follows:
 
