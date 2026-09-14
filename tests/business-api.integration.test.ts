@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { OrderSource, PaymentStatus, PrismaClient } from "@prisma/client";
+import { DeliveryStatus, OrderSource, OrderStatus, PaymentStatus, PrismaClient } from "@prisma/client";
 import request from "supertest";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { createApp } from "../src/server/app";
@@ -418,6 +418,22 @@ databaseDescribe("Business API against PostgreSQL", () => {
     expect((await adminService.getOrder(second.body.order.orderReference) as { customer: { name: string } }).customer.name).toBe("Sila");
     expect(await prisma.customer.count({ where: { normalizedPhone: "+254710000014" } })).toBe(1);
     expect(await prisma.customer.findUnique({ where: { normalizedPhone: "+254710000014" } })).toMatchObject({ name: "Sila" });
+  });
+
+  it.each([
+    ["delivery completion", { deliveryStatus: DeliveryStatus.DELIVERED }, OrderStatus.DELIVERED, DeliveryStatus.DELIVERED, { orderStatus: OrderStatus.DELIVERED, deliveryStatus: DeliveryStatus.DELIVERED }],
+    ["order completion", { orderStatus: OrderStatus.DELIVERED }, OrderStatus.DELIVERED, DeliveryStatus.DELIVERED, { orderStatus: OrderStatus.DELIVERED, deliveryStatus: DeliveryStatus.DELIVERED }],
+    ["delivery scheduling", { deliveryStatus: DeliveryStatus.SCHEDULED }, OrderStatus.NEW, DeliveryStatus.SCHEDULED, { deliveryStatus: DeliveryStatus.SCHEDULED }],
+  ])("persists synchronized admin status updates through Prisma for %s", async (_case, update, expectedOrder, expectedDelivery, expectedChanged) => {
+    const created = await postOrder().send(orderRequest("0710000015", [{ variantId: firstVariantId, quantity: 1 }]));
+    expect(created.status).toBe(201);
+
+    const result = await adminService.updateOrderStatuses(created.body.order.orderReference, update);
+    const stored = await prisma.order.findUniqueOrThrow({ where: { orderNumber: created.body.order.orderReference } });
+
+    expect(stored.status).toBe(expectedOrder);
+    expect(stored.deliveryStatus).toBe(expectedDelivery);
+    expect(result.changed).toMatchObject(expectedChanged);
   });
 
   it("allows only one of two concurrent orders for the final stock unit", async () => {

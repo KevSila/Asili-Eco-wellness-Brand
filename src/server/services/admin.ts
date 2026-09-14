@@ -285,7 +285,12 @@ export const adminService: AdminService = {
         if (changed.paymentStatus !== ledgerStatus) throw new InvalidStatusTransitionError();
       }
       if (!Object.values(changed).some(Boolean)) return { order: toAdminOrder(current), changed };
-      const order = await transaction.order.update({ where: { orderNumber }, data: changed, include: adminOrderInclude });
+      const data: Prisma.OrderUpdateInput = {
+        status: changed.orderStatus,
+        paymentStatus: changed.paymentStatus,
+        deliveryStatus: changed.deliveryStatus,
+      };
+      const order = await transaction.order.update({ where: { orderNumber }, data, include: adminOrderInclude });
       return { order: toAdminOrder(order), changed };
     });
   },
