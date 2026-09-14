@@ -1,8 +1,14 @@
 import { PrismaClient } from "@prisma/client";
+import {
+  assertDatabaseSeedAllowed,
+  DatabaseSeedBlockedError,
+} from "./seed-guard";
 
 const prisma = new PrismaClient();
 
 async function main() {
+  const seedTarget = assertDatabaseSeedAllowed(process.env);
+  console.log(`Running database seed for environment: ${seedTarget.environmentName}.`);
   await prisma.$transaction(async (transaction) => {
     const product = await transaction.product.upsert({
       where: { slug: "asili-raw-makueni-honey-sample" },
@@ -84,7 +90,11 @@ async function main() {
 
 main()
   .catch((error) => {
-    console.error("Database seed failed:", error);
+    console.error(
+      error instanceof DatabaseSeedBlockedError
+        ? error.message
+        : "Database seed failed. Verify the target environment and database connectivity.",
+    );
     process.exitCode = 1;
   })
   .finally(async () => {

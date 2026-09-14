@@ -10,7 +10,7 @@
     "dev": "tsx server.ts",
     "build": "npm run prisma:generate && npm run build:client && npm run build:server",
     "build:client": "vite build && node scripts/generate-netlify-redirects.mjs",
-    "build:server": "tsup server.ts --format esm --platform node --target node20 --out-dir dist/server --clean false --sourcemap --external vite",
+    "build:server": "tsup server.ts --format esm --platform node --target node20 --out-dir dist/server --clean false --sourcemap --external vite && tsup prisma/seed.ts --format esm --platform node --target node20 --out-dir dist/server/prisma --clean false --sourcemap",
     "start": "node dist/server/server.js",
     "preview": "vite preview",
     "clean": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\"",
@@ -20,6 +20,7 @@
     "prisma:validate": "prisma validate",
     "db:migrate": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "db:seed:prod": "node dist/server/prisma/seed.js",
     "admin:hash-password": "tsx scripts/hash-admin-password.ts"
   },
   "dependencies": {
