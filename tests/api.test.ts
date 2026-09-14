@@ -4,13 +4,18 @@ import { createApp } from "../src/server/app";
 
 describe("API smoke tests", () => {
   it("reports a healthy API", async () => {
-    const app = await createApp({ serveFrontend: false, resendApiKey: "" });
+    const app = await createApp({
+      serveFrontend: false,
+      resendApiKey: "",
+      railwayEnvironmentName: "staging",
+    });
     const response = await request(app).get("/api/health");
 
     expect(response.status).toBe(200);
     expect(response.body).toMatchObject({
       status: "ok",
       service: "silatech-business-helper-api",
+      environment: "staging",
     });
     expect(Number.isNaN(Date.parse(response.body.timestamp))).toBe(false);
   });
@@ -21,6 +26,7 @@ describe("API smoke tests", () => {
       serveFrontend: false,
       resendApiKey: "",
       databaseReadinessCheck,
+      railwayEnvironmentName: "production",
     });
     const response = await request(app).get("/api/health/db");
 
@@ -29,6 +35,7 @@ describe("API smoke tests", () => {
       status: "ok",
       service: "silatech-business-helper-api",
       database: "ready",
+      environment: "production",
     });
     expect(databaseReadinessCheck).toHaveBeenCalledOnce();
   });
@@ -40,6 +47,7 @@ describe("API smoke tests", () => {
       serveFrontend: false,
       resendApiKey: "",
       databaseReadinessCheck,
+      railwayEnvironmentName: "staging",
     });
     const response = await request(app).get("/api/health/db");
 
@@ -48,6 +56,7 @@ describe("API smoke tests", () => {
       status: "unavailable",
       service: "silatech-business-helper-api",
       database: "unavailable",
+      environment: "staging",
     });
     expect(JSON.stringify(response.body)).not.toContain("private database error");
     expect(errorLog).toHaveBeenCalledOnce();

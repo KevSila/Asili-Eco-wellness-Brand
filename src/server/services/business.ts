@@ -9,6 +9,7 @@ import {
   type PaymentStatus,
 } from "@prisma/client";
 import { prisma } from "../db/client";
+import { resolveHistoricalOrderCustomer } from "../lib/order-customer-snapshot";
 
 const MAX_POSTGRES_INTEGER = 2_147_483_647;
 const ORDER_REFERENCE_ATTEMPTS = 3;
@@ -205,6 +206,12 @@ const publicOrderInclude = {
 type PublicOrderRecord = Prisma.OrderGetPayload<{ include: typeof publicOrderInclude }>;
 
 function toPublicOrder(order: PublicOrderRecord): PublicOrder {
+  const historicalCustomer = resolveHistoricalOrderCustomer({
+    customerNameSnapshot: order.customerNameSnapshot,
+    customerPhoneSnapshot: order.customerPhoneSnapshot,
+    currentName: order.customer?.name,
+    currentPhone: order.customer?.phone,
+  });
   return {
     orderReference: order.orderNumber,
     createdAt: order.createdAt.toISOString(),
@@ -216,8 +223,8 @@ function toPublicOrder(order: PublicOrderRecord): PublicOrder {
     deliveryFeeMinor: order.deliveryFeeMinor,
     totalAmountMinor: order.totalAmountMinor,
     customer: {
-      name: order.customer?.name ?? order.customerNameSnapshot ?? "Customer",
-      phone: order.customer?.phone ?? order.customerPhoneSnapshot ?? "",
+      name: historicalCustomer.name,
+      phone: historicalCustomer.phone ?? "",
       email: order.customer?.email ?? null,
     },
     deliveryLocation: order.deliveryArea ?? "",

@@ -161,7 +161,7 @@ export function HoneyOrderForm() {
   if (confirmation) {
     const message = `Hi, I’ve placed Asili order ${confirmation.orderReference}. Please help me confirm delivery details and the delivery fee.`;
     return (
-      <div id="order-confirmation" ref={confirmationRef} tabIndex={-1} className="rounded-[2rem] border border-asili-gold/25 bg-white p-7 text-asili-green shadow-xl outline-none sm:p-10" role="status" aria-live="polite" aria-label="Order confirmation">
+      <div id="order-confirmation" ref={confirmationRef} tabIndex={-1} className="scroll-mt-24 rounded-[2rem] border border-asili-gold/25 bg-white p-7 text-asili-green shadow-xl outline-none sm:p-10" role="status" aria-live="polite" aria-label="Order confirmation">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-asili-green text-asili-honey">
           <Check className="h-6 w-6" aria-hidden="true" />
         </div>

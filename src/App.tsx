@@ -28,6 +28,8 @@ import {
 import { cn } from "@/src/lib/utils";
 import { HoneyOrderForm } from "@/src/components/HoneyOrderForm";
 import { orderFormHref, type PublicPage } from "@/src/lib/order-links";
+import { publicHoneyFunnel } from "@/src/lib/public-funnel";
+import { installRenderedHashScrolling } from "@/src/lib/hash-scroll";
 
 const WHATSAPP_NUMBER = "254717578394";
 const WHATSAPP_BASE = `https://wa.me/${WHATSAPP_NUMBER}`;
@@ -125,7 +127,7 @@ const Section = ({
   id?: string;
   motif?: FlowMotifConfig;
 }) => (
-  <section id={id} className={cn("relative isolate scroll-mt-24 overflow-hidden px-6 py-20 md:px-12 lg:px-24 lg:py-28", className)}>
+  <section id={id} tabIndex={id === "order" ? -1 : undefined} className={cn("relative isolate scroll-mt-24 overflow-hidden px-6 py-20 md:px-12 lg:px-24 lg:py-28", className)}>
     {motif && <FlowMotif {...motif} />}
     <div className="relative z-10 mx-auto max-w-7xl">{children}</div>
   </section>
@@ -168,7 +170,7 @@ const Header = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => {
   const links =
     page === "home"
       ? [
-          ["Honey", "#honey"],
+          ["Honey", publicHoneyFunnel.explore],
           ["Our story", "#story"],
           ["Why Asili", "#why-asili"],
           ["Traceability", "#traceability"],
@@ -532,21 +534,22 @@ const HomePage = () => {
                 <p className="mt-7 max-w-2xl text-base leading-relaxed text-asili-green/70 sm:text-lg">
                   Asili brings you natural, raw and unheated honey from Makueni’s semi-arid landscapes—built around quality, visible origin and shared value for the communities behind every batch.
                 </p>
-                <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
                   <a
-                    href={whatsappUrl("Hello Asili, I would like to order your Makueni honey. Please share the available sizes, prices and delivery options.")}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                    href={publicHoneyFunnel.orderOnline}
                     className="group inline-flex items-center justify-center gap-3 rounded-full bg-asili-green px-8 py-4 text-sm font-bold text-white shadow-[0_18px_40px_rgba(26,58,30,0.18)] transition-transform hover:-translate-y-1"
                   >
-                    Buy Asili honey <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
+                    Order honey online <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" aria-hidden="true" />
                   </a>
                   <a
-                    href="/honey/#traceability"
+                    href={publicHoneyFunnel.whatsappEnquiry}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="inline-flex items-center justify-center gap-3 rounded-full border border-asili-green/15 bg-white/60 px-8 py-4 text-sm font-bold text-asili-green backdrop-blur hover:border-asili-honey"
                   >
-                    See how we verify it
+                    Ask on WhatsApp
                   </a>
+                  <a href={publicHoneyFunnel.explore} className="inline-flex items-center justify-center px-5 py-3 text-sm font-bold text-asili-green underline decoration-asili-honey underline-offset-4">Explore our honey</a>
                 </div>
                 <div className="mt-10 grid max-w-xl grid-cols-3 gap-4 border-t border-asili-green/10 pt-6">
                   {[
@@ -1183,7 +1186,7 @@ const Footer = ({ theme, page }: { theme: Theme; page: "home" | "honey" }) => (
   </footer>
 );
 
-const FloatingWhatsApp = ({ theme, page }: { theme: Theme; page: PublicPage }) => (
+const FloatingOrderCTA = ({ theme, page }: { theme: Theme; page: PublicPage }) => (
   <a
     href={orderFormHref(page)}
     aria-label="Go to the Asili honey order form"
@@ -1204,11 +1207,13 @@ export default function App() {
     document.documentElement.style.colorScheme = isHoneyPage ? "dark" : "light";
   }, [isHoneyPage]);
 
+  useEffect(() => installRenderedHashScrolling(), []);
+
   return (
     <div className={cn("min-h-screen", isHoneyPage ? "bg-asili-black" : "bg-asili-cream")}>
       <a href="#main-content" className="skip-link">Skip to content</a>
       {isHoneyPage ? <HoneyPage /> : <HomePage />}
-      <FloatingWhatsApp theme={theme} page={isHoneyPage ? "honey" : "home"} />
+      <FloatingOrderCTA theme={theme} page={isHoneyPage ? "honey" : "home"} />
     </div>
   );
 }

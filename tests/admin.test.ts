@@ -222,6 +222,22 @@ describe("admin authentication and APIs", () => {
       .send({ orderStatus: "new", paymentStatus: "pending", deliveryStatus: "dispatched" });
     expect(response.status).toBe(200);
     expect(notifier.notifyCustomerLifecycle).toHaveBeenCalledWith(expect.objectContaining({ orderReference: sampleOrder.orderReference }), "CUSTOMER_DISPATCHED");
+    expect(notifier.notifyCustomerLifecycle).toHaveBeenCalledTimes(1);
+  });
+
+  it("sends only delivered for a direct pending-to-delivered update", async () => {
+    const notifier: OwnerOrderNotifier = { notifyWebsiteOrder: vi.fn(), notifyCustomerLifecycle: vi.fn().mockResolvedValue(undefined) };
+    const { app, service } = await createTestApp({ orderNotifier: notifier });
+    vi.mocked(service.updateOrderStatuses).mockResolvedValue({ order: { ...sampleOrder, orderStatus: "delivered", deliveryStatus: "delivered" }, changed: { orderStatus: OrderStatus.DELIVERED, deliveryStatus: DeliveryStatus.DELIVERED } });
+    const agent = request.agent(app);
+    const session = await login(agent);
+    const response = await agent.patch(`/api/admin/orders/${sampleOrder.orderReference}/statuses`)
+      .set("X-CSRF-Token", session.csrfToken)
+      .send({ deliveryStatus: "delivered" });
+    expect(response.status).toBe(200);
+    expect(notifier.notifyCustomerLifecycle).toHaveBeenCalledTimes(1);
+    expect(notifier.notifyCustomerLifecycle).toHaveBeenCalledWith(expect.anything(), "CUSTOMER_DELIVERED");
+    expect(notifier.notifyCustomerLifecycle).not.toHaveBeenCalledWith(expect.anything(), "CUSTOMER_DISPATCHED");
   });
 
   it("does not resend a lifecycle notification for an unchanged status request", async () => {
